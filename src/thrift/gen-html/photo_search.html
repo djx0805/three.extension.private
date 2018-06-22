@@ -1,0 +1,132 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<link href="style.css" rel="stylesheet" type="text/css"/>
+<title>Thrift module: photo_search</title></head><body>
+<div class="container-fluid">
+<h1>Thrift module: photo_search</h1>
+<pre>The available types in Thrift are:
+
+ bool        Boolean, one byte
+ i8 (byte)   Signed 8-bit integer
+ i16         Signed 16-bit integer
+ i32         Signed 32-bit integer
+ i64         Signed 64-bit integer
+ double      64-bit floating point value
+ string      String
+ binary      Blob (byte array)
+ map&lt;t1,t2&gt;  Map from one type to another
+ list&lt;t1&gt;    Ordered list of one type
+ set&lt;t1&gt;     Set of unique elements of one type
+
+Notice : Thrift supports C style comments
+</pre><br/><table class="table-bordered table-striped table-condensed"><thead><th>Module</th><th>Services</th><th>Data types</th><th>Constants</th></thead>
+<tr>
+<td>photo_search</td><td><a href="#Svc_PhotoMatcher">PhotoMatcher</a><br/>
+<ul>
+<li><a href="#Fn_PhotoMatcher_getNumArNode">getNumArNode</a></li>
+<li><a href="#Fn_PhotoMatcher_loadArNode">loadArNode</a></li>
+<li><a href="#Fn_PhotoMatcher_ping">ping</a></li>
+<li><a href="#Fn_PhotoMatcher_searchPhotoByNearest">searchPhotoByNearest</a></li>
+<li><a href="#Fn_PhotoMatcher_test">test</a></li>
+</ul>
+</td>
+<td><a href="#Struct_InvalidOperation">InvalidOperation</a><br/>
+<a href="#Struct_ThriftCamera">ThriftCamera</a><br/>
+<a href="#Struct_ThriftDatumPlane">ThriftDatumPlane</a><br/>
+<a href="#Struct_ThriftDatumPlanes">ThriftDatumPlanes</a><br/>
+<a href="#Enum_ThriftErrorType">ThriftErrorType</a><br/>
+<a href="#Struct_ThriftMatrix4">ThriftMatrix4</a><br/>
+<a href="#Struct_ThriftPhotoData">ThriftPhotoData</a><br/>
+<a href="#Struct_ThriftVector2">ThriftVector2</a><br/>
+<a href="#Struct_ThriftVector3">ThriftVector3</a><br/>
+</td>
+<td></code></td>
+</tr></table>
+<hr/><h2 id="Enumerations">Enumerations</h2>
+<div class="definition"><h3 id="Enum_ThriftErrorType">Enumeration: ThriftErrorType</h3>
+<br/><table class="table-bordered table-striped table-condensed">
+<tr><td><code>OK</code></td><td><code>1</code></td><td>
+</td></tr>
+<tr><td><code>YES</code></td><td><code>2</code></td><td>
+</td></tr>
+<tr><td><code>EXISTED</code></td><td><code>3</code></td><td>
+</td></tr>
+<tr><td><code>FAILED</code></td><td><code>4</code></td><td>
+</td></tr>
+</table></div>
+<hr/><h2 id="Structs">Data structures</h2>
+<div class="definition"><h3 id="Struct_InvalidOperation">Exception: InvalidOperation</h3>
+<table class="table-bordered table-striped table-condensed"><thead><th>Key</th><th>Field</th><th>Type</th><th>Description</th><th>Requiredness</th><th>Default value</th></thead>
+<tr><td>1</td><td>errorType</td><td><code><a href="#Enum_ThriftErrorType">ThriftErrorType</a></code></td><td></td><td>default</td><td></td></tr>
+<tr><td>2</td><td>errorDes</td><td><code>string</code></td><td></td><td>default</td><td></td></tr>
+</table><br/></div><div class="definition"><h3 id="Struct_ThriftMatrix4">Struct: ThriftMatrix4</h3>
+<table class="table-bordered table-striped table-condensed"><thead><th>Key</th><th>Field</th><th>Type</th><th>Description</th><th>Requiredness</th><th>Default value</th></thead>
+<tr><td>1</td><td>n11</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>2</td><td>n12</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>3</td><td>n13</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>4</td><td>n14</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>5</td><td>n21</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>6</td><td>n22</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>7</td><td>n23</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>8</td><td>n24</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>9</td><td>n31</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>10</td><td>n32</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>11</td><td>n33</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>12</td><td>n34</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>13</td><td>n41</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>14</td><td>n42</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>15</td><td>n43</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>16</td><td>n44</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+</table><br/></div><div class="definition"><h3 id="Struct_ThriftVector3">Struct: ThriftVector3</h3>
+<table class="table-bordered table-striped table-condensed"><thead><th>Key</th><th>Field</th><th>Type</th><th>Description</th><th>Requiredness</th><th>Default value</th></thead>
+<tr><td>1</td><td>x</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>2</td><td>y</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>3</td><td>z</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+</table><br/></div><div class="definition"><h3 id="Struct_ThriftVector2">Struct: ThriftVector2</h3>
+<table class="table-bordered table-striped table-condensed"><thead><th>Key</th><th>Field</th><th>Type</th><th>Description</th><th>Requiredness</th><th>Default value</th></thead>
+<tr><td>1</td><td>x</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>2</td><td>y</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+</table><br/></div><div class="definition"><h3 id="Struct_ThriftDatumPlane">Struct: ThriftDatumPlane</h3>
+<table class="table-bordered table-striped table-condensed"><thead><th>Key</th><th>Field</th><th>Type</th><th>Description</th><th>Requiredness</th><th>Default value</th></thead>
+<tr><td>1</td><td>datumPoints</td><td><code>list&lt;<code><a href="#Struct_ThriftVector3">ThriftVector3</a></code>&gt;</code></td><td></td><td>default</td><td></td></tr>
+</table><br/></div><div class="definition"><h3 id="Struct_ThriftDatumPlanes">Struct: ThriftDatumPlanes</h3>
+<table class="table-bordered table-striped table-condensed"><thead><th>Key</th><th>Field</th><th>Type</th><th>Description</th><th>Requiredness</th><th>Default value</th></thead>
+<tr><td>1</td><td>datumPlanes</td><td><code>list&lt;<code><a href="#Struct_ThriftDatumPlane">ThriftDatumPlane</a></code>&gt;</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>2</td><td>intersectPoint</td><td><code><a href="#Struct_ThriftVector3">ThriftVector3</a></code></td><td></td><td>default</td><td></td></tr>
+<tr><td>3</td><td>constraintPoint</td><td><code><a href="#Struct_ThriftVector3">ThriftVector3</a></code></td><td></td><td>default</td><td></td></tr>
+</table><br/></div><div class="definition"><h3 id="Struct_ThriftCamera">Struct: ThriftCamera</h3>
+<table class="table-bordered table-striped table-condensed"><thead><th>Key</th><th>Field</th><th>Type</th><th>Description</th><th>Requiredness</th><th>Default value</th></thead>
+<tr><td>1</td><td>matrixWorldInverse</td><td><code><a href="#Struct_ThriftMatrix4">ThriftMatrix4</a></code></td><td></td><td>default</td><td></td></tr>
+<tr><td>2</td><td>projectionMatrix</td><td><code><a href="#Struct_ThriftMatrix4">ThriftMatrix4</a></code></td><td></td><td>default</td><td></td></tr>
+</table><br/></div><div class="definition"><h3 id="Struct_ThriftPhotoData">Struct: ThriftPhotoData</h3>
+<table class="table-bordered table-striped table-condensed"><thead><th>Key</th><th>Field</th><th>Type</th><th>Description</th><th>Requiredness</th><th>Default value</th></thead>
+<tr><td>1</td><td>index</td><td><code>i32</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>2</td><td>imgPower</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>3</td><td>angle</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>4</td><td>deltaToCenter</td><td><code>double</code></td><td></td><td>default</td><td></td></tr>
+<tr><td>5</td><td>viewMatrix</td><td><code><a href="#Struct_ThriftMatrix4">ThriftMatrix4</a></code></td><td></td><td>default</td><td></td></tr>
+<tr><td>6</td><td>projectionMatrix</td><td><code><a href="#Struct_ThriftMatrix4">ThriftMatrix4</a></code></td><td></td><td>default</td><td></td></tr>
+<tr><td>7</td><td>imgUrl</td><td><code>string</code></td><td></td><td>default</td><td></td></tr>
+</table><br/></div><hr/><h2 id="Services">Services</h2>
+<h3 id="Svc_PhotoMatcher">Service: PhotoMatcher</h3>
+<div class="definition"><h4 id="Fn_PhotoMatcher_ping">Function: PhotoMatcher.ping</h4>
+<pre><code>void</code> ping()
+</pre></div><div class="definition"><h4 id="Fn_PhotoMatcher_test">Function: PhotoMatcher.test</h4>
+<pre><code>string</code> test(<code>i32</code> num,
+            <code>string</code> testMsg)
+</pre></div><div class="definition"><h4 id="Fn_PhotoMatcher_getNumArNode">Function: PhotoMatcher.getNumArNode</h4>
+<pre><code>i32</code> getNumArNode(<code>string</code> resourceID)
+    throws <code><a href="#Struct_InvalidOperation">InvalidOperation</a></code>
+</pre></div><div class="definition"><h4 id="Fn_PhotoMatcher_loadArNode">Function: PhotoMatcher.loadArNode</h4>
+<pre><code>string</code> loadArNode(<code>string</code> resourceID,
+                  <code>i32</code> numArNode)
+    throws <code><a href="#Struct_InvalidOperation">InvalidOperation</a></code>
+</pre></div><div class="definition"><h4 id="Fn_PhotoMatcher_searchPhotoByNearest">Function: PhotoMatcher.searchPhotoByNearest</h4>
+<pre><code><a href="#Struct_ThriftPhotoData">ThriftPhotoData</a></code> searchPhotoByNearest(<code>string</code> resourceID,
+                                     <code><a href="#Struct_ThriftCamera">ThriftCamera</a></code> thriftCamera,
+                                     <code><a href="#Struct_ThriftDatumPlanes">ThriftDatumPlanes</a></code> datumPlanes)
+    throws <code><a href="#Struct_InvalidOperation">InvalidOperation</a></code>
+</pre></div></div></body></html>
