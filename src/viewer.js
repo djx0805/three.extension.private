@@ -5,6 +5,7 @@ import {ModelLayer} from "./modelLayer";
 import {TJHModelLayer} from "./TJHModelLayer";
 import {TerrainLayer} from "./terrainLayer";
 import {ARLayer} from "./arLayer";
+import {PostLayer} from "./postLayer";
 
 /**
  * ARScene 类
@@ -46,7 +47,10 @@ class ARScene extends  THREE.Scene {
          * @type {Array}
          */
         this.temporaryObjs = [];
-
+        /**
+         * 屏幕特效图层
+         * @type {Array}
+         */
         this.postLayers = [];
         /**
          * 光源
@@ -163,7 +167,31 @@ class ARScene extends  THREE.Scene {
     }
 
     addPostLayer(name, order, postLayer) {
-        for()
+        for(let n=0, length = this.postLayers.length; n<length; ++n) {
+            if(this.postLayers[n].order < order) {
+                this.postLayers.splice(n,0, {name:name, order:order, enable:true, layer:postLayer});
+                return;
+            }
+        }
+    }
+
+    removePostLayer(name) {
+        for(let n=0, length = this.postLayers.length; n<length; ++n) {
+            if(this.postLayers[n].name === name) {
+                this.postLayers.splice(n,1);
+                return;
+            }
+        }
+    }
+
+    getPostLayer(name) {
+        let layers = [];
+        for(let n=0, length = this.postLayers.length; n<length; ++n) {
+            if(this.postLayers[n].name === name && this.postLayers[n].enable) {
+                layers[layers.length] = this.postLayers[n];
+            }
+        }
+        return layers;
     }
     /**
      * 添加临时渲染对象
@@ -907,12 +935,16 @@ class Viewer {
         return this.renderer;
     }
 
-    registPostProcessor(name, renderPass, order = 0) {
-
+    registPostProcessor(name, renderPass, order = 0, PostLayerConstructor = PostLayer) {
+        if(RenderTechnique.registPostProcessor(name, renderPass, order)) {
+            this.scene.addPostLayer(name, order, new PostLayerConstructor());
+        }
     }
 
     unregistPostProcessor(name) {
-
+        if(RenderTechnique.unregistPostProcessor(name)) {
+            this.scene.removePostLayer(name);
+        }
     }
 
     /**

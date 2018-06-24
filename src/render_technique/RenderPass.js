@@ -1,24 +1,31 @@
 class RenderPass {
-    constructor(scene, camera) {
-        this.scene = scene ? scene : new THREE.Scene();
+    constructor(scene, camera, renderTarget) {
+        this.scene = scene ;
         this.camera = camera;
+        this.renderTarget = renderTarget;
+    }
+
+    setRenderResource(scene, camera, renderTarget) {
+        this.scene = scene ;
+        this.camera = camera;
+        this.renderTarget = renderTarget;
     }
 
     render(renderer) {
 
     }
-}
 
-class NormalRenderPass extends RenderPass {
-    constructor(scene, camera) {
-        super(scene, camera);
-        //
-        this.render = (renderer)=> {
-            renderer.render(scene, camera);
-        }
+    release() {
+
+    }
+
+    setSize(width, height) {
+
     }
 }
 
 
+
+
 export {RenderPass};
-export {NormalRenderPass};
+

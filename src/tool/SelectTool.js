@@ -11,7 +11,7 @@ import {ToolBase} from "./ToolBase";
  * @param {Array} layers   -参与选择的图层集合（模型图层或矢量图层）
  */
 class SelectTool extends ToolBase {
-    constructor(viewer, camera, highLight = true, layers=viewer.scene.modelLayers, renderTechnique = null) {
+    constructor(viewer, camera, highLight = true, layers=viewer.scene.modelLayers, outLineObjLayer = null) {
         super(viewer);
         //
         /**
@@ -44,19 +44,9 @@ class SelectTool extends ToolBase {
          */
         this.mouseOverColor = new THREE.Color(0x00ff00);
         this._highLight_ = highLight;
-        this._needPop_ = false;
         //
-        this.outLineTechnique = renderTechnique;
-        if(!this.outLineTechnique) {
-            this.outLineTechnique = highLight ? new tjh.ar.OutLineTechnique(this.viewer.renderer, this.viewer.scene, this.camera) : null;
-        }
+        this.outLineObjLayer = outLineObjLayer ? outLineObjLayer : viewer.scene.getPostLayer('OutLineObjLayer')[0];
         //
-        if(this._highLight_) {
-            if(this.viewer.getCurrentRenderTechnique() !== this.outLineTechnique) {
-                this.viewer.pushRenderTechnique(this.outLineTechnique);
-                this._needPop_ = true;
-            }
-        }
         /**
          * 设置是否高亮选中对象
          * @public
@@ -67,24 +57,11 @@ class SelectTool extends ToolBase {
                 return ;
             //
             if(highLight) {
-                if(!this.outLineTechnique) {
-                    this.outLineTechnique = new tjh.ar.OutLineTechnique(this.viewer.renderer, this.viewer.scene, this.camera);
-                }
-                this.outLineTechnique.addOutlineObj(this.selectedObjs);
-                if(this.viewer.getCurrentRenderTechnique() !== this.outLineTechnique) {
-                    this.viewer.pushRenderTechnique(this.outLineTechnique);
-                    this._needPop_ = true;
-                }
-                else
-                    this._needPop_ = false;
+
             }
-            else if(this.outLineTechnique) {
-                if(this._needPop_) {
-                    this.viewer.popRenderTechnique(false);
-                    this._needPop_ = false;
-                }
+            else if(this.outLineObjLayer) {
                 //
-                this.outLineTechnique.removeOutlineObj(this.selectedObjs);
+                this.outLineObjLayer.removeOutlineObj(this.selectedObjs);
             }
             //
             this._highLight_ = highLight;
@@ -96,11 +73,8 @@ class SelectTool extends ToolBase {
             for(let i=0; i<this.selectedObjs.length; ++i) {
                 delete this.selectedObjs[i].outlineColor;
             }
-            this.outLineTechnique.clear();
-            //
-            if(this._highLight_ && this._needPop_) {
-                this.viewer.popRenderTechnique();
-            }
+            if(this.outLineObjLayer)
+              this.outLineObjLayer.removeOutlineObj(this.selectedObjs);
         }
     }
 }
@@ -160,16 +134,13 @@ class PointSelectTool extends SelectTool {
             //
             if(this.selectedObjs.indexOf(currentSelectedObj) < 0) {
                 if(this.selectedObjs.length > 0) {
-                    if(this._highLight_) {
-                        this.outLineTechnique.removeOutlineObj(this.selectedObjs[0]);
+                    if(this._highLight_ && this.outLineObjLayer) {
+                        this.outLineObjLayer.removeOutlineObj(this.selectedObjs[0]);
                     }
                     this.selectedObjs = [];
                 }
                 currentSelectedObj.outlineColor = this.selectColor.clone();
                 this.selectedObjs.push(currentSelectedObj);
-                if(this._highLight_) {
-                    this.outLineTechnique.updateOutlineObj(currentSelectedObj);
-                }
                 currentSelectedObj = undefined;
                 return true;
             }
@@ -185,8 +156,8 @@ class PointSelectTool extends SelectTool {
             let selectObj = select(mouseEvent);
             if(!selectObj) {
                 if(currentSelectedObj) {
-                    if(this._highLight_) {
-                        this.outLineTechnique.removeOutlineObj(currentSelectedObj);
+                    if(this._highLight_ && this.outLineObjLayer) {
+                        this.outLineObjLayer.removeOutlineObj(currentSelectedObj);
                     }
                     delete currentSelectedObj.outlineColor;
                     currentSelectedObj = undefined;
@@ -201,8 +172,8 @@ class PointSelectTool extends SelectTool {
             selectObj.outlineColor = this.mouseOverColor.clone();
             //
             if(!currentSelectedObj) {
-                if(this._highLight_) {
-                    this.outLineTechnique.addOutlineObj(selectObj);
+                if(this._highLight_ && this.outLineObjLayer) {
+                    this.outLineObjLayer.addOutlineObj(selectObj);
                 }
                 currentSelectedObj = selectObj;
             }
@@ -210,13 +181,13 @@ class PointSelectTool extends SelectTool {
                 return true;
             }
             else {
-                if(this._highLight_) {
-                    this.outLineTechnique.removeOutlineObj(currentSelectedObj);
+                if(this._highLight_ && this.outLineObjLayer) {
+                    this.outLineObjLayer.removeOutlineObj(currentSelectedObj);
                 }
                 delete currentSelectedObj.outlineColor;
                 currentSelectedObj = selectObj;
-                if(this._highLight_) {
-                    this.outLineTechnique.addOutlineObj(currentSelectedObj);
+                if(this._highLight_ && this.outLineObjLayer) {
+                    this.outLineObjLayer.addOutlineObj(currentSelectedObj);
                 }
                 return true;
             }
