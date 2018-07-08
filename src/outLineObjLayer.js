@@ -41,5 +41,14 @@ class OutLineObjLayer extends PostLayer {
         this.getOutLineObjs = ()=> {
             return outLineObjs;
         }
+
+        this.isEmpty = function () {
+            if(outLineObjs.length > 0)
+                return false;
+            //
+            return true;
+        }
     }
-}
+};
+
+export {OutLineObjLayer};

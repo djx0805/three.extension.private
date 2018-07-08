@@ -41,6 +41,10 @@ THREE.DataBasePager = function (createWorker = true) {
      */
     this.enableRequestData = true;
     //
+    this._passedRequest_ = [];
+    this.maxSortRequests = 0;
+    this.cullGroup = false;
+    //
     if(createWorker) {
         let loader = this;
         this.nodeLoadWorker = new Worker('../src/worker/nodeParserWorker.js');
@@ -68,13 +72,19 @@ THREE.DataBasePager = function (createWorker = true) {
     }
 };
 
+THREE.DataBasePager.LOAD_STRATEGY = {
+
+};
+THREE.DataBasePager.prototype = Object.assign( Object.create( THREE.EventDispatcher.prototype ), {
+    constructor: THREE.DataBasePager
+});
 
 /**
  * 请求数据
  * @param {string} url -所要求数据的url
  * @returns {boolean}
  */
-THREE.DataBasePager.prototype.load = function(url) {
+THREE.DataBasePager.prototype.load = function(url, frameNumber, force = false, weight = -1) {
     if(!this.enableRequestData) {
         return false;
     }
@@ -84,15 +94,86 @@ THREE.DataBasePager.prototype.load = function(url) {
         return true;
     }
     //
-    if(this.loadingCount > this.maxWaitingLoaded) {
-        //console.log("too many load");
-        return false;
+    let loadUrl = "";
+    let loadWeight = -1;
+    //
+    if(!force) {
+        if(this.loadingCount > this.maxWaitingLoaded) {
+            //console.log("too many load");
+            if(this._passedRequest_.length > 0 && this._passedRequest_[0].frameNumber < frameNumber - 1) {
+                this._passedRequest_.splice(0,1);
+            }
+            //
+            for(let n=0, length = this._passedRequest_.length; n<length; ++n) {
+                if(frameNumber > this._passedRequest_[n].frameNumber) {
+                    continue;
+                }
+                else if(this._passedRequest_[n].weight < 0) {
+                    continue;
+                }
+                else if(weight <= this._passedRequest_[n].weight) {
+                    continue;
+                }
+                else {
+                    this._passedRequest_.splice(n, 0, {url:url, frameNumber:frameNumber, weight:weight});
+                    if(this._passedRequest_.length > this.maxSortRequests) {
+                        this._passedRequest_.splice(this.maxSortRequests, 1);
+                    }
+                    return false;
+                }
+            }
+            //
+            if(this._passedRequest_.length < this.maxSortRequests) {
+                this._passedRequest_[this._passedRequest_.length] = {url:url, frameNumber:frameNumber, weight:weight};
+            }
+            //
+            return false;
+        }
+        //
+        let numRemove = 0;
+        while(numRemove < this._passedRequest_.length && this._passedRequest_[numRemove].frameNumber < frameNumber - 1) {
+           ++numRemove;
+        }
+        this._passedRequest_.splice(0, numRemove);
+        //
+        if(this._passedRequest_.length > 0) {
+            loadUrl = this._passedRequest_[0].url;
+            this._passedRequest_.splice(0,1);
+        }
+        else {
+            loadUrl = url;
+        }
+        //
+        if(loadUrl !== url) {
+            let inserted = false;
+            for(let n=0, length = this._passedRequest_.length; n<length; ++n) {
+                if(frameNumber > this._passedRequest_[n].frameNumber) {
+                    continue;
+                }
+                else if(this._passedRequest_[n].weight < 0) {
+                    continue;
+                }
+                else if(weight <= this._passedRequest_[n].weight) {
+                    continue;
+                }
+                else {
+                    this._passedRequest_.splice(n, 0, {url:url, frameNumber:frameNumber, weight:weight});
+                    inserted = true;
+                }
+            }
+            //
+            if(!inserted) {
+                this._passedRequest_[this._passedRequest_.length] = {url:url, frameNumber:frameNumber, weight:weight};
+            }
+        }
+    }
+    else {
+        loadUrl = url;
     }
     //
-    this.loadedNodeCache.set(url, {isPlaceholder: true});
+    this.loadedNodeCache.set(loadUrl, {isPlaceholder: true});
     ++this.loadingCount;
-    this.nodeLoadWorker.postMessage(url);
-    //
+    this.nodeLoadWorker.postMessage(loadUrl);
     return true;
 };
 
@@ -236,45 +317,105 @@ THREE.DataBasePager.prototype.proxyParse = function (proxy, node, meshes, textur
           geometry.addAttribute('uv', new THREE.Float32BufferAttribute( proxy.geometry.uv, 2 ))
         if(proxy.geometry.indexes)
           geometry.setIndex( proxy.geometry.indexes.length > 256 ? (proxy.geometry.indexes.length > 65536 ? new THREE.Uint32BufferAttribute( proxy.geometry.indexes, 1 ) : new THREE.Uint16BufferAttribute( proxy.geometry.indexes, 1 )) : new THREE.Uint8BufferAttribute( proxy.geometry.indexes, 1 ));
-        //
-        let material = new THREE.MeshBasicMaterial();
         if(proxy.geometry.normal) {
             geometry.addAttribute('normal', new THREE.Float32BufferAttribute(proxy.geometry.normal, 3));
-            material = new THREE.MeshPhongMaterial();
         }
-        if(proxy.material) {
-            if(material instanceof  THREE.MeshPhongMaterial) {
-                material.color = new THREE.Color(proxy.material.diffuse[0], proxy.material.diffuse[1], proxy.material.diffuse[2]);
-                material.specular = new THREE.Color(proxy.material.specular[0], proxy.material.specular[1], proxy.material.specular[2]);
-                material.shininess = proxy.material.shininess;
-                material.emissive = new THREE.Color(proxy.material.emission[0], proxy.material.emission[1], proxy.material.emission[2]);
+        if(proxy.geometry.group) {
+            for(let n=0, numGroup = proxy.geometry.group.length; n<numGroup; ++n) {
+                geometry.addGroup(proxy.geometry.group[n].start, proxy.geometry.group[n].count, proxy.geometry.group[n].materialIndex);
             }
-            //
-            if(proxy.material.texture && proxy.material.texture.url) {
-                if(textures[proxy.material.texture.url]) {
-                    material.map = textures[proxy.material.texture.url];
-                    ++textures[proxy.material.texture.url].nReference;
-                }
-                else {
-                    let textureLoader = new THREE.TextureLoader();
-                    let netUrl = encodeURIComponent(proxy.material.texture.url);
-                    let texture = textureLoader.load(proxy.material.texture.url, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
-                    texture.wrapS = proxy.material.texture.wrapS;
-                    texture.wrapT = proxy.material.texture.wrapT;
-                    texture.minFilter = proxy.material.texture.minFilter;
-                    texture.magFilter = proxy.material.texture.magFilter;
-                    texture.generateMipmaps = false;
-                    material.map = texture;
-                    //
-                    ++texture.nReference;
-                    textures[proxy.material.texture.url] = texture;
-                }
-            }
-            else
-                console.log("no texture");
         }
         //
-        let mesh = new THREE.Mesh(geometry, material);
+        let meshMaterial = null;
+        //
+        if(proxy.material instanceof  Array) {
+            let materials = [];
+            for(let n=0, numMaterial = proxy.material.length; n<numMaterial; ++n) {
+                materials[n] = new THREE.MeshBasicMaterial();
+                if(proxy.geometry.normal) {
+                    materials[n] = new THREE.MeshPhongMaterial();
+                }
+                //
+                let material = materials[n];
+                //
+                if(material instanceof  THREE.MeshPhongMaterial) {
+                    material.color = new THREE.Color(proxy.material[n].diffuse[0], proxy.material[n].diffuse[1], proxy.material[n].diffuse[2]);
+                    material.specular = new THREE.Color(proxy.material[n].specular[0], proxy.material[n].specular[1], proxy.material[n].specular[2]);
+                    material.shininess = proxy.material[n].shininess;
+                    material.emissive = new THREE.Color(proxy.material[n].emission[0], proxy.material[n].emission[1], proxy.material[n].emission[2]);
+                }
+                //
+                if(proxy.material[n].texture && proxy.material[n].texture.url) {
+                    if(textures[proxy.material[n].texture.url]) {
+                        material.map = textures[proxy.material[n].texture.url];
+                        ++textures[proxy.material[n].texture.url].nReference;
+                    }
+                    else {
+                        let textureLoader = new THREE.TextureLoader();
+                        let netUrl = encodeURIComponent(proxy.material[n].texture.url);
+                        let texture = textureLoader.load(proxy.material[n].texture.url, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+                        texture.wrapS = proxy.material[n].texture.wrapS;
+                        texture.wrapT = proxy.material[n].texture.wrapT;
+                        texture.minFilter = proxy.material[n].texture.minFilter;
+                        texture.magFilter = proxy.material[n].texture.magFilter;
+                        texture.generateMipmaps = false;
+                        material.map = texture;
+                        //
+                        ++texture.nReference;
+                        textures[proxy.material[n].texture.url] = texture;
+                    }
+                }
+                else
+                    console.log("no texture");
+            }
+            //
+            meshMaterial = materials;
+        }
+        else {
+            let material = new THREE.MeshBasicMaterial();
+            material.lights = true;
+            if(proxy.geometry.normal) {
+                geometry.addAttribute('normal', new THREE.Float32BufferAttribute(proxy.geometry.normal, 3));
+                material = new THREE.MeshPhongMaterial();
+            }
+            if(proxy.material) {
+                if(material instanceof  THREE.MeshPhongMaterial) {
+                    material.color = new THREE.Color(proxy.material.diffuse[0], proxy.material.diffuse[1], proxy.material.diffuse[2]);
+                    material.specular = new THREE.Color(proxy.material.specular[0], proxy.material.specular[1], proxy.material.specular[2]);
+                    material.shininess = proxy.material.shininess;
+                    material.emissive = new THREE.Color(proxy.material.emission[0], proxy.material.emission[1], proxy.material.emission[2]);
+                }
+                //
+                if(proxy.material.texture && proxy.material.texture.url) {
+                    if(textures[proxy.material.texture.url]) {
+                        material.map = textures[proxy.material.texture.url];
+                        ++textures[proxy.material.texture.url].nReference;
+                    }
+                    else {
+                        let textureLoader = new THREE.TextureLoader();
+                        let netUrl = encodeURIComponent(proxy.material.texture.url);
+                        let texture = textureLoader.load(proxy.material.texture.url, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+                        texture.wrapS = proxy.material.texture.wrapS;
+                        texture.wrapT = proxy.material.texture.wrapT;
+                        texture.minFilter = proxy.material.texture.minFilter;
+                        texture.magFilter = proxy.material.texture.magFilter;
+                        texture.generateMipmaps = false;
+                        material.map = texture;
+                        //
+                        ++texture.nReference;
+                        textures[proxy.material.texture.url] = texture;
+                    }
+                }
+                else
+                    console.log("no texture");
+            }
+            //
+            meshMaterial = material;
+        }
+        //
+        let mesh = new THREE.Mesh(geometry, meshMaterial);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
         mesh.drawMode = proxy.drawMode;
         //
         if(proxy.name) {
@@ -342,28 +483,59 @@ THREE.DataBasePager.TEX_STATE = {
 THREE.DataBasePager.prototype.checkCacheReady = function (strID, onFailed) {
     if(this.loadingTextureCache.has(strID)) {
         let faileds = [];
-        for(let n=0, length = this.loadingTextureCache.get(strID).length; n<length; ++n) {
-            if(!this.loadingTextureCache.get(strID)[n].material.map) {
+        let meshes = this.loadingTextureCache.get(strID);
+        for(let n=0, length = meshes.length; n<length; ++n) {
+            let material = meshes[n].material;
+            //
+            if(material.isMaterial) {
+                if(!material.map) {
 
-            }
-            else if(!this.loadingTextureCache.get(strID)[n].material.map.image) {
-                return {state:THREE.DataBasePager.TEX_STATE_LOADING};
-            }
-            else if(this.loadingTextureCache.get(strID)[n].material.map.image.failedLoad) {
-                if(onFailed) {
-                    if(!onFailed(this.loadingTextureCache.get(strID)[n].material)) {
-                        faileds.push(this.loadingTextureCache.get(strID)[n].material);
+                }
+                else if(!material.map.image) {
+                    return {state:THREE.DataBasePager.TEX_STATE_LOADING};
+                }
+                else if(material.map.image.failedLoad) {
+                    if(onFailed) {
+                        if(!onFailed(material)) {
+                            faileds.push(material);
+                        }
+                    }
+                    else if(material instanceof  THREE.MeshBasicMaterial) {
+                        material.map = undefined;
                     }
                 }
-                else if(this.loadingTextureCache.get(strID)[n].material instanceof  THREE.MeshBasicMaterial) {
-                    this.loadingTextureCache.get(strID)[n].material.map = undefined;
+                else if(material.map.image.loaded) {
+
+                }
+                else {
+                    return {state:THREE.DataBasePager.TEX_STATE.TEX_STATE_LOADING};
                 }
             }
-            else if(this.loadingTextureCache.get(strID)[n].material.map.image.loaded) {
+            else if(material instanceof  Array) {
+                for(let i=0, numMaterial = material.length; i<numMaterial; ++i) {
+                    if(!material[i].map) {
 
-            }
-            else {
-                return {state:THREE.DataBasePager.TEX_STATE.TEX_STATE_LOADING};
+                    }
+                    else if(!material[i].map.image) {
+                        return {state:THREE.DataBasePager.TEX_STATE_LOADING};
+                    }
+                    else if(material[i].map.image.failedLoad) {
+                        if(onFailed) {
+                            if(!onFailed(material[i])) {
+                                faileds.push(material[i]);
+                            }
+                        }
+                        else if(material[i] instanceof  THREE.MeshBasicMaterial) {
+                            material[i].map = undefined;
+                        }
+                    }
+                    else if(material[i].map.image.loaded) {
+
+                    }
+                    else {
+                        return {state:THREE.DataBasePager.TEX_STATE.TEX_STATE_LOADING};
+                    }
+                }
             }
         }
         //
@@ -379,4 +551,9 @@ THREE.DataBasePager.prototype.checkCacheReady = function (strID, onFailed) {
     else {
         return {state:THREE.DataBasePager.TEX_STATE.TEX_STATE_READY};
     }
+};
+
+
+THREE.DataBasePager.prototype.pageScaleFunc = function (contex, node) {
+    return 1.0;
 };

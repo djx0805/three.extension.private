@@ -8,11 +8,13 @@ THREE.ProxyNode = function (dataBasePager) {
     THREE.Group.call(this);
 
     this.type = 'ProxyNode';
+    this.isProxyNode = true;
     /**
      * 分页管理器
      * @type {THREE.DataBasePager}
      */
     this.dataBasePager = dataBasePager ? dataBasePager : new THREE.DataBasePager(true);
+    this.forceRootLoad = false;
 
     Object.defineProperties( this, {
         fileNameList: {
@@ -119,13 +121,13 @@ THREE.ProxyNode.prototype.getNumFileNames = function () {
  * @param {string} url -代理文件 url
  * @return {boolean} -失败返回 false
  */
-THREE.ProxyNode.prototype.loadChild = function (url) {
-    return this.dataBasePager.load(url);
+THREE.ProxyNode.prototype.loadChild = function (url, frameNumber) {
+    return this.dataBasePager.load(url, frameNumber, this.forceRootLoad);
 };
 
-THREE.ProxyNode.prototype.update = function (context) {
+THREE.ProxyNode.prototype.update = function (context, visibleMesh) {
     for(let i=0, length = this.fileNameList.length; i<length; i++) {
-        if(!this.fileNameList[i].visible)
+        if(!this.fileNameList[i].visible || this.fileNameList[i].dataIndex >= 0)
             continue;
         //
         if(this.dataBasePager.loadedNodeCache.has(this.fileNameList[i].fileName)) {
@@ -172,25 +174,25 @@ THREE.ProxyNode.prototype.update = function (context) {
             continue;
         }
         else if(this.fileNameList[i].dataIndex < 0){
-            this.loadChild(this.fileNameList[i].fileName);
+            this.loadChild(this.fileNameList[i].fileName, context.numFrame);
         }
     }
     //
     let updatingChildren = [];
-    let lookAt = context.camera.matrixWorldInverse.getLookAt();
+    let lookAt = context.lookAt ? context.lookAt : context.camera.matrixWorldInverse.getLookAt();
     for(let i=0, length = this.fileNameList.length; i<length; i++) {
         if (!this.fileNameList[i].visible || this.fileNameList[i].dataIndex < 0 || !this.children[this.fileNameList[i].dataIndex].parent)
             continue;
         //
         let child = this.children[this.fileNameList[i].dataIndex];
         let bs = child.getBoundingSphereWorld();
-        updatingChildren[updatingChildren.length] = {child:child, disToEye:lookAt.eye.clone().sub(bs.center).length()};
+        updatingChildren[updatingChildren.length] = {child:child, disToEye:lookAt.eye.clone().sub(bs.center).lengthSq()};
         //this.children[i].update(context);
     }
     //
     updatingChildren.sort((a,b)=>{return a.disToEye - b.disToEye});
     for(let i=0, length = updatingChildren.length; i<length; ++i) {
-        updatingChildren[i].child.update(context);
+        updatingChildren[i].child.update(context, visibleMesh);
     }
 };
 
@@ -203,4 +205,4 @@ THREE.ProxyNode.prototype.removeUnExpected = function() {
             this.children[i].removeUnExpectedChild(10);
         }
     }
-}
+};

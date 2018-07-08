@@ -7,9 +7,9 @@ class OutLineTechnique extends RenderTechnique {
     constructor(renderer, scene, camera) {
         super(renderer, scene, camera);
         //
-        let normalRenderPass = new NormalRenderPass();
-        let outLineRenderPass = new OutLineRenderPass();
-        let outPutRenderPass = new OutPutRenderPass();
+        let normalRenderPass = new NormalRenderPass(scene, camera, this.screenRT);
+        let outLineRenderPass = new OutLineRenderPass(scene, camera, this.offScreenRT);
+        let outPutRenderPass = new OutPutRenderPass(scene, camera, this.offScreenRT);
         //
         this.addRenderPass(normalRenderPass);
         this.addRenderPass(outLineRenderPass);

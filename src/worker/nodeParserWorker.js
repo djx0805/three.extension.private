@@ -35,7 +35,248 @@ let osgjsParseToProxy = (json, node, stateSets, textures, vertexes, baseServerUr
                 group.name = json["osg.Node"].Name;
             }
             osgjsParseToProxy(json["osg.Node"], group, stateSets, textures, vertexes, baseServerUrl);
-            node.children.push(group);
+
+            if(group.children.length === 1 && (!group.name || group.name.length===0)) {
+                node.children.push(group.children[0]);
+            }
+            else if(group.children.length === 1 && group.name && !group.children[0].name) {
+                group.children[0].name = group.name;
+                node.children.push(group.children[0]);
+            }
+            else if(group.children.length === 0) {
+
+            }
+            else if(group.children.length > 1) {
+                let mergeGeometry = true;
+                for(let n=0, length = group.children.length; n<length; ++n) {
+                    if(!group.children[n].isMeshProxy) {
+                        mergeGeometry = false;
+                        break;
+                    }
+                }
+                //
+                let drawMode = -1;
+                let vertexes = [];
+                let uvs = [];
+                let indexes = [];
+                let normals = [];
+                if(mergeGeometry) {
+                    let drawMode = group.children[0].drawMode;
+                    if(group.children[0].geometry.vertexes) {
+                        vertexes[0] = group.children[0].geometry.vertexes;
+                    }
+                    if(group.children[0].geometry.uv) {
+                        uvs[0] = group.children[0].geometry.uv;
+                    }
+                    if(group.children[0].geometry.indexes) {
+                        indexes[0] = group.children[0].geometry.indexes;
+                    }
+                    if(group.children[0].geometry.normal) {
+                        normals[0] = group.children[0].geometry.normal;
+                    }
+                    for(let n=1, length = group.children.length; n<length; ++n) {
+                        if(group.children[n].drawMode !== drawMode) {
+                            drawMode = -1;
+                        }
+                        //
+                        if(group.children[n].geometry.vertexes) {
+                            vertexes[vertexes.length] = group.children[n].geometry.vertexes;
+                        }
+                        if(group.children[n].geometry.uv) {
+                            uvs[uvs.length] = group.children[n].geometry.uv;
+                        }
+                        if(group.children[n].geometry.indexes) {
+                            indexes[indexes.length] = group.children[n].geometry.indexes;
+                        }
+                        if(group.children[n].geometry.normal) {
+                            normals[normals.length] = group.children[n].geometry.normal;
+                        }
+                    }
+                }
+                //
+                if(mergeGeometry) {
+                    if(uvs.length !== 0 && uvs.length !== vertexes.length) {
+                        mergeGeometry = false;
+                    }
+                    if(normals.length !== 0 && normals.length !== vertexes.length) {
+                        mergeGeometry = false;
+                    }
+                    if(indexes.length !== 0 && indexes.length !== vertexes.length) {
+                        mergeGeometry = false;
+                    }
+                }
+                //
+                if(mergeGeometry) {
+                    let materials = [];
+                    let groupGeom = new GeometryProxy();
+                    groupGeom.group = [];
+                    for(let n=0, length = group.children.length; n<length; ++n) {
+                        materials[materials.length] = group.children[n].material;
+                    }
+                    //
+                    if(indexes.length > 0) {
+                        let groupVertexes = [];
+                        let groupNormals = [];
+                        let groupUvs = [];
+                        if(drawMode <= 0) {
+                            for(let i=0, numIndexes = indexes.length; i<numIndexes; ++i) {
+                                let start = groupVertexes.length/3;
+                                let count = 0;
+                                if (group.children[i].drawMode === 0) {
+                                    for (let n = 0, numFace = indexes[i].length / 3; n < numFace; n++) {
+                                        let i_0 = indexes[i][n * 3];
+                                        let i_1 = indexes[i][n * 3 + 1];
+                                        let i_2 = indexes[i][n * 3 + 2];
+                                        //
+                                        groupVertexes[groupVertexes.length] = vertexes[i][i_0*3];
+                                        groupVertexes[groupVertexes.length] = vertexes[i][i_0*3 + 1];
+                                        groupVertexes[groupVertexes.length] = vertexes[i][i_0*3 + 2];
+
+                                        groupVertexes[groupVertexes.length] = vertexes[i][i_1*3];
+                                        groupVertexes[groupVertexes.length] = vertexes[i][i_1*3 + 1];
+                                        groupVertexes[groupVertexes.length] = vertexes[i][i_1*3 + 2];
+
+                                        groupVertexes[groupVertexes.length] = vertexes[i][i_2*3];
+                                        groupVertexes[groupVertexes.length] = vertexes[i][i_2*3 + 1];
+                                        groupVertexes[groupVertexes.length] = vertexes[i][i_2*3 + 2];
+                                        //
+                                        if (uvs.length > 0) {
+                                            groupUvs[groupUvs.length] = uvs[i][i_0*2];
+                                            groupUvs[groupUvs.length] = uvs[i][i_0*2 + 1];
+
+                                            groupUvs[groupUvs.length] = uvs[i][i_1*2];
+                                            groupUvs[groupUvs.length] = uvs[i][i_1*2 + 1];
+
+                                            groupUvs[groupUvs.length] = uvs[i][i_2*2];
+                                            groupUvs[groupUvs.length] = uvs[i][i_2*2 + 1];
+                                        }
+                                        //
+                                        if (normals.length > 0) {
+                                            groupNormals[groupNormals.length] = normals[i][i_0*3];
+                                            groupNormals[groupNormals.length] = normals[i][i_0*3 + 1];
+                                            groupNormals[groupNormals.length] = normals[i][i_0*3 + 2];
+
+                                            groupNormals[groupNormals.length] = normals[i][i_1*3];
+                                            groupNormals[groupNormals.length] = normals[i][i_1*3 + 1];
+                                            groupNormals[groupNormals.length] = normals[i][i_1*3 + 2];
+
+                                            groupNormals[groupNormals.length] = normals[i][i_2*3];
+                                            groupNormals[groupNormals.length] = normals[i][i_2*3 + 1];
+                                            groupNormals[groupNormals.length] = normals[i][i_2*3 + 2];
+                                        }
+                                        //
+                                        count += 3;
+                                    }
+                                }
+                                else if(group.children[i].drawMode === 1) {
+                                    for(let n=2, numIndexes = indexes[i].length; n<numIndexes; ++n) {
+                                        let i_0 = 0, i_1 = 0, i_2 = 0;
+                                        //
+                                        if((n%2) !== 0) {
+                                            i_0 = indexes[i][n - 2];
+                                            i_1 = indexes[i][n];
+                                            i_2 = indexes[i][n - 1];
+                                        }
+                                        else {
+                                            i_0 = indexes[i][n - 2];
+                                            i_1 = indexes[i][n - 1];
+                                            i_2 = indexes[i][n];
+                                        }
+                                        //
+                                        groupVertexes[groupVertexes.length] = vertexes[i][i_0*3];
+                                        groupVertexes[groupVertexes.length] = vertexes[i][i_0*3 + 1];
+                                        groupVertexes[groupVertexes.length] = vertexes[i][i_0*3 + 2];
+
+                                        groupVertexes[groupVertexes.length] = vertexes[i][i_1*3];
+                                        groupVertexes[groupVertexes.length] = vertexes[i][i_1*3 + 1];
+                                        groupVertexes[groupVertexes.length] = vertexes[i][i_1*3 + 2];
+
+                                        groupVertexes[groupVertexes.length] = vertexes[i][i_2*3];
+                                        groupVertexes[groupVertexes.length] = vertexes[i][i_2*3 + 1];
+                                        groupVertexes[groupVertexes.length] = vertexes[i][i_2*3 + 2];
+                                        //
+                                        if (uvs.length > 0) {
+                                            groupUvs[groupUvs.length] = uvs[i][i_0*2];
+                                            groupUvs[groupUvs.length] = uvs[i][i_0*2 + 1];
+
+                                            groupUvs[groupUvs.length] = uvs[i][i_1*2];
+                                            groupUvs[groupUvs.length] = uvs[i][i_1*2 + 1];
+
+                                            groupUvs[groupUvs.length] = uvs[i][i_2*2];
+                                            groupUvs[groupUvs.length] = uvs[i][i_2*2 + 1];
+                                        }
+                                        //
+                                        if (normals.length > 0) {
+                                            groupNormals[groupNormals.length] = normals[i][i_0*3];
+                                            groupNormals[groupNormals.length] = normals[i][i_0*3 + 1];
+                                            groupNormals[groupNormals.length] = normals[i][i_0*3 + 2];
+
+                                            groupNormals[groupNormals.length] = normals[i][i_1*3];
+                                            groupNormals[groupNormals.length] = normals[i][i_1*3 + 1];
+                                            groupNormals[groupNormals.length] = normals[i][i_1*3 + 2];
+
+                                            groupNormals[groupNormals.length] = normals[i][i_2*3];
+                                            groupNormals[groupNormals.length] = normals[i][i_2*3 + 1];
+                                            groupNormals[groupNormals.length] = normals[i][i_2*3 + 2];
+                                        }
+                                        //
+                                        count += 3;
+                                    }
+                                }
+                                //
+                                groupGeom.group[i] = {start: start, count: count, materialIndex: i};
+                            }
+                        }
+                        else if(drawMode === 1) {
+                            for(let i=0, numIndexes = indexes.length; i<numIndexes; ++i) {
+                                let start = groupVertexes.length/3;
+                                let count = 0;
+                                for(let n=0, numIndexes = indexes[i].length; n<numIndexes; ++n) {
+                                    groupVertexes[groupVertexes.length] = vertexes[i][n*3];
+                                    groupVertexes[groupVertexes.length] = vertexes[i][n*3 + 1];
+                                    groupVertexes[groupVertexes.length] = vertexes[i][n*3 + 2];
+
+                                    if (uvs.length > 0) {
+                                        groupUvs[groupUvs.length] = uvs[i][n*2];
+                                        groupUvs[groupUvs.length] = uvs[i][n*2 + 1];
+                                    }
+                                    //
+                                    if (normals.length > 0) {
+                                        groupNormals[groupNormals.length] = normals[i][n*3];
+                                        groupNormals[groupNormals.length] = normals[i][n*3 + 1];
+                                        groupNormals[groupNormals.length] = normals[i][n*3 + 2];
+                                    }
+                                    //
+                                    count++;
+                                }
+                                //
+                                groupGeom.group[i] = {start: start, count: count, materialIndex: i};
+                            }
+                        }
+
+                        //
+                        groupGeom.vertexes = groupVertexes;
+                        groupGeom.uv = groupUvs.length > 0 ? groupUvs : null;
+                        groupGeom.normal = groupNormals.length > 0 ? groupNormals : null;
+                        //
+                        //
+                        let mesh = new MeshProxy(groupGeom, materials);
+                        mesh.drawMode = drawMode <= 0 ? 0 : drawMode;
+                        mesh.name = group.name;
+                        //
+                        node.children.push(mesh);
+                    }
+                    else {
+                        node.children.push(group);
+                    }
+                }
+                else {
+                    node.children.push(group);
+                }
+            }
+            else {
+                node.children.push(group);
+            }
         }
         else if(strKey === "Children") {
             for(let i=0; i<json["Children"].length; i++) {

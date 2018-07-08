@@ -1,4 +1,4 @@
-import {NormalRenderPass, RenderPass} from "./RenderPass";
+import {RenderPass} from "./RenderPass";
 
 class OutPutRenderPass extends RenderPass {
     constructor(scene, camera, renderTarget) {
@@ -16,7 +16,7 @@ class OutPutRenderPass extends RenderPass {
         tmpScene.add(quad);
         //
         this.render = function (renderer) {
-            if(!this.renderTarget)
+            if(this.renderTarget.renderToScreen)
                 return false;
             //
             renderer.render(tmpScene, orthoCamera);

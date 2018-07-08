@@ -17,16 +17,16 @@ class TerrainLayer extends THREE.ProxyNode {
             this.updateMatrixWorld();
         }
         //
-        this.excavation = [];
-        //
         this.matrixAutoUpdate = false;
         //
-        this.rayIntersectTerrain = (()=>{
+        this._visibleMesh_ = [];
+        //
+        this.rayIntersectTerrain = (()=> {
             let raycaster = new THREE.Raycaster();
             let terrainBoundingBox = this.getBoundingBoxWorld();
             let terrainBottomPlane = new THREE.Plane();
             terrainBottomPlane.setFromNormalAndCoplanarPoint(new THREE.Vector3(0,0,1), terrainBoundingBox.min);
-            return (p, camera)=>{
+            return (p, camera)=> {
                 raycaster.setFromCamera( p, camera);
                 let intersects = raycaster.intersectObject(this);
                 if(intersects.length > 0) {
@@ -38,6 +38,24 @@ class TerrainLayer extends THREE.ProxyNode {
                 }
             }
         })();
+        //
+        this.getCurrentBoundingBoxWorld = function () {
+            let bb = new THREE.Box3();
+            for(let n=0, length = this._visibleMesh_.length; n<length; ++n) {
+                bb.expandByBox3(this._visibleMesh_[n].getBoundingBoxWorld());
+            }
+            //
+            return bb;
+        };
+        //
+        this.getCurrentBoundingSphereWorld = function () {
+            let bs = new THREE.Sphere();
+            for(let n=0, length = this._visibleMesh_.length; n<length; ++n) {
+                bs.expandBySphere(this._visibleMesh_[n].getBoundingSphereWorld());
+            }
+            //
+            return bs;
+        };
     }
 
     /**
@@ -56,38 +74,11 @@ class TerrainLayer extends THREE.ProxyNode {
         this.removeFileName(url);
     }
 
-
-    addExcavation(boundary, offset, depth) {
-        let polygonShape = new THREE.Shape(boundary);
-        let geom = new THREE.ShapeBufferGeometry(polygonShape);
-        let mesh = new THREE.Mesh(geom, new THREE.MeshBasicMaterial());
-        mesh.position.x = offset.x;
-        mesh.position.y = offset.y;
-        mesh.position.z = offset.z - depth;
-        mesh.material.color.setRGB(0.6,0.6,0.6);
-        mesh.material.depthTest = false;
-        mesh.material.depthWrite = false;
-        //
-        this.excavation[this.excavation.length] = mesh;
-    }
-
     update(context) {
+        this._visibleMesh_ = [];
+        //
         if(!this.visible)
             return;
-        //
-        let pgs = [];
-        let pagedLodCollect = (node)=> {
-            if(node instanceof  THREE.PagedLod) {
-                node.isRoot = true;
-                pgs.push(node);
-            }
-            else if(node.children.length > 0) {
-                for(let i=0; i<node.children.length; ++i) {
-                    pagedLodCollect(node.children[i]);
-                }
-            }
-        }
-        pagedLodCollect(this);
         //
         context.onTextureLoadFailed = function (material) {
             if(material instanceof  THREE.MeshBasicMaterial) {
@@ -97,7 +88,10 @@ class TerrainLayer extends THREE.ProxyNode {
             return true;
         }
         //
-        super.update(context);
+        if(!context.lookAt) {
+            context.lookAt = context.camera.matrixWorldInverse.getLookAt();
+        }
+        super.update(context, this._visibleMesh_);
     }
 
     intersectWithRay(raycaster) {

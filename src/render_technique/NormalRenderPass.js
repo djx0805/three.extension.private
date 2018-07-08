@@ -12,7 +12,7 @@ class NormalRenderPass extends RenderPass {
         //
         let pars = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat };
         //
-        let terrainDepthRT = new THREE.WebGLRenderTarget( renderer.domElement.clientWidth, renderer.domElement.clientHeight, pars );
+        let terrainDepthRT = new THREE.WebGLRenderTarget( this.renderTarget.width, this.renderTarget.height, pars );
         terrainDepthRT.texture.generateMipmaps = false;
         let terrainDepthCamera = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
         terrainDepthCamera.position.set(0,0,0);
@@ -21,9 +21,9 @@ class NormalRenderPass extends RenderPass {
         terrainDepthCamera.updateMatrixWorld();
         let terrainDepthCameraNearFar = new THREE.Vector2();
         let memDepthSapmler = new MemDepthSampler();
-        memDepthSapmler.data = new Uint8Array(this.domElement.clientWidth * this.domElement.clientHeight * 4);
-        memDepthSapmler.size[0] = this.domElement.clientWidth;
-        memDepthSapmler.size[1] = this.domElement.clientHeight;
+        memDepthSapmler.data = new Uint8Array(this.renderTarget.width * this.renderTarget.height * 4);
+        memDepthSapmler.size[0] = this.renderTarget.width;
+        memDepthSapmler.size[1] = this.renderTarget.height;
         let depthBufferUpdated = false;
         //
         let terrainDepthRenderPass = new RenderPass(scene);
@@ -34,10 +34,6 @@ class NormalRenderPass extends RenderPass {
         terrainDepthRenderPass.frequencyOfReadDepthBuffer = 5;
         terrainDepthRenderPass.numSkipReadDepthBuffer = 0;
         terrainDepthRenderPass.render = function (renderer) {
-            if(fitTerrainLayers.length === 0 && !terrainDepthCamera.visible) {
-                return true;
-            }
-            //
             let visibleObjs = [];
             for(let i=0; i<this.scene.featureLayers.length; ++i) {
                 if(this.scene.featureLayers[i].visible) {
@@ -65,29 +61,10 @@ class NormalRenderPass extends RenderPass {
             }
             //
             visibleTerrainRange.makeEmpty();
-            let hasVisibleTerrain = false;
-            let getTerrainRange = (terrain)=> {
-                if(!terrain.visible)
-                    return;
-                //
-                if(terrain instanceof  THREE.Mesh) {
-                    let bx = terrain.getBoundingBoxWorld();
-                    if(bx.valid()) {
-                        visibleTerrainRange.expandByBox3(bx);
-                        hasVisibleTerrain = true;
-                    }
-                }
-                else if(terrain.children.length > 0) {
-                    for(let i=0; i<terrain.children.length; ++i) {
-                        getTerrainRange(terrain.children[i]);
-                    }
-                }
-            }
             //
             for(let i=0; i<this.scene.terrainLayers.length; ++i) {
                 if(this.scene.terrainLayers[i].visible) {
-                    getTerrainRange(this.scene.terrainLayers[i]);
-                    //visibleTerrainRange.expandByBox3(this.scene.terrainLayers[i].getBoundingBox());
+                    visibleTerrainRange.expandByBox3(this.scene.terrainLayers[i].getCurrentBoundingBoxWorld());
                 }
             }
             //
@@ -95,8 +72,8 @@ class NormalRenderPass extends RenderPass {
             let oldClearAlpha = renderer.getClearAlpha();
             renderer.setClearColor(new THREE.Color(1.0,1.0,1.0), 1.0);
             //
-            if(!hasVisibleTerrain) {
-                terrainDepthCamera.visible = true;
+            if(!visibleTerrainRange.valid()) {
+                terrainDepthCamera.visible = false;
                 renderer.clearTarget(terrainDepthRT, true, false, false);
                 renderer.setClearColor(oldClearColor, oldClearAlpha);
                 for(let i=0; i<visibleObjs.length; ++i) {
@@ -189,7 +166,7 @@ class NormalRenderPass extends RenderPass {
                     //
                     if(this.scene.featureLayers[i].regulator.fitPattern <= FeatureLayer.FIT_PATTERN.FIT_TERRIAN_HIGH && this.scene.featureLayers[i].pointMaterial) {
                         this.scene.featureLayers[i].pointMaterial.uniforms["depthTexture"].value = terrainDepthRT.texture;
-                        this.scene.featureLayers[i].pointMaterial.uniforms["textureSize"].value.set(renderer.domElement.clientWidth, renderer.domElement.clientHeight);
+                        this.scene.featureLayers[i].pointMaterial.uniforms["textureSize"].value.set(this.renderTarget.width, this.renderTarget.height);
                         this.scene.featureLayers[i].pointMaterial.uniforms["depthCameraNearFar"].value = terrainDepthCameraNearFar;
                         this.scene.featureLayers[i].pointMaterial.uniforms["textureMatrix"].value = textureMatrix;
                         this.scene.featureLayers[i].pointMaterial.uniforms["textureRange"].value = new THREE.Vector4(visibleTerrainRange.min.x, visibleTerrainRange.min.y, visibleTerrainRange.max.x, visibleTerrainRange.max.y);
@@ -197,7 +174,7 @@ class NormalRenderPass extends RenderPass {
                     }
                     if(this.scene.featureLayers[i].regulator.fitPattern <= FeatureLayer.FIT_PATTERN.FIT_TERRIAN_HIGH && this.scene.featureLayers[i].lineMaterial) {
                         this.scene.featureLayers[i].lineMaterial.uniforms["depthTexture"].value = terrainDepthRT.texture;
-                        this.scene.featureLayers[i].lineMaterial.uniforms["textureSize"].value.set(renderer.domElement.clientWidth, renderer.domElement.clientHeight);
+                        this.scene.featureLayers[i].lineMaterial.uniforms["textureSize"].value.set(this.renderTarget.width, this.renderTarget.height);
                         this.scene.featureLayers[i].lineMaterial.uniforms["depthCameraNearFar"].value = terrainDepthCameraNearFar;
                         this.scene.featureLayers[i].lineMaterial.uniforms["textureMatrix"].value = textureMatrix;
                         this.scene.featureLayers[i].lineMaterial.uniforms["textureRange"].value = new THREE.Vector4(visibleTerrainRange.min.x, visibleTerrainRange.min.y, visibleTerrainRange.max.x, visibleTerrainRange.max.y);
@@ -205,7 +182,7 @@ class NormalRenderPass extends RenderPass {
                     }
                     if(this.scene.featureLayers[i].regulator.fitPattern <= FeatureLayer.FIT_PATTERN.FIT_TERRIAN_HIGH && this.scene.featureLayers[i].polygonMaterial) {
                         this.scene.featureLayers[i].polygonMaterial.uniforms["depthTexture"].value = terrainDepthRT.texture;
-                        this.scene.featureLayers[i].polygonMaterial.uniforms["textureSize"].value.set(renderer.domElement.clientWidth, renderer.domElement.clientWidth);
+                        this.scene.featureLayers[i].polygonMaterial.uniforms["textureSize"].value.set(this.renderTarget.width, this.renderTarget.height);
                         this.scene.featureLayers[i].polygonMaterial.uniforms["depthCameraNearFar"].value = terrainDepthCameraNearFar;
                         this.scene.featureLayers[i].polygonMaterial.uniforms["textureMatrix"].value = textureMatrix;
                         this.scene.featureLayers[i].polygonMaterial.uniforms["textureRange"].value = new THREE.Vector4(visibleTerrainRange.min.x, visibleTerrainRange.min.y, visibleTerrainRange.max.x, visibleTerrainRange.max.y);
@@ -213,7 +190,7 @@ class NormalRenderPass extends RenderPass {
                     }
                     if(this.scene.featureLayers[i].labelMaterial) {
                         this.scene.featureLayers[i].labelMaterial.uniforms["depthTexture"].value = terrainDepthRT.texture;
-                        this.scene.featureLayers[i].labelMaterial.uniforms["textureSize"].value.set(renderer.domElement.clientWidth, renderer.domElement.clientHeight);
+                        this.scene.featureLayers[i].labelMaterial.uniforms["textureSize"].value.set(this.renderTarget.width, this.renderTarget.height);
                         this.scene.featureLayers[i].labelMaterial.uniforms["depthCameraNearFar"].value = terrainDepthCameraNearFar;
                         this.scene.featureLayers[i].labelMaterial.uniforms["textureMatrix"].value = textureMatrix;
                         this.scene.featureLayers[i].labelMaterial.uniforms["textureRange"].value = new THREE.Vector4(visibleTerrainRange.min.x, visibleTerrainRange.min.y, visibleTerrainRange.max.x, visibleTerrainRange.max.y);
@@ -222,7 +199,7 @@ class NormalRenderPass extends RenderPass {
                 }
             }
             //
-            renderer.render(this.scene, this.camera, this.renderTarget);
+            renderer.render(this.scene, this.camera, this.renderTarget.renderToScreen ? null : this.renderTarget);
             //
             return true;
         }

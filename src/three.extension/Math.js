@@ -31,3 +31,4 @@ THREE.computePixelSizeVector = function (width, height, pM, vM) {
 
     return pixelSizeVector;
 };
+

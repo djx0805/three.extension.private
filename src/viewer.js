@@ -1,4 +1,4 @@
-import {NormalRenderPass} from "./render_technique/RenderPass";
+//import {NormalRenderPass} from "./render_technique/NormalRenderPass";
 import {RenderTechnique} from "./render_technique/RenderTechnique";
 import {FeatureLayer} from "./featureLayer";
 import {ModelLayer} from "./modelLayer";
@@ -6,6 +6,8 @@ import {TJHModelLayer} from "./TJHModelLayer";
 import {TerrainLayer} from "./terrainLayer";
 import {ARLayer} from "./arLayer";
 import {PostLayer} from "./postLayer";
+import {OutLineRenderPass} from "./render_technique/OutLineRenderPass";
+import {OutLineObjLayer} from "./outLineObjLayer"
 
 /**
  * ARScene 类
@@ -63,6 +65,42 @@ class ARScene extends  THREE.Scene {
          * @type {number[]}
          */
         this.globalOffset = [0.0,0.0,0.0];
+        //
+        this.currentBoundingBox = new THREE.Box3();
+        //
+        this.addPostLayer('OutLineObjLayer', 100, new OutLineObjLayer());
+        //
+        this._visibleTerrianLayers = [];
+        this._visibleModelLayers = [];
+        this._visibleMeshes = [];
+        this.onBeforeRender = function( renderer, scene, camera, renderTarget ) {
+            this._visibleMeshes = [];
+            //
+            this._visibleTerrianLayers = [];
+            for(let n=0, length = this.terrainLayers.length; n<length; ++n) {
+                if(this.terrainLayers[n].visible) {
+                    this._visibleTerrianLayers[this._visibleTerrianLayers.length] = this.terrainLayers[n];
+                    this._visibleMeshes = this._visibleMeshes.concat(this.terrainLayers[n]._visibleMesh_);
+                }
+            }
+            //
+            this._visibleModelLayers = [];
+            for(let n=0, length = this.modelLayers.length; n<length; ++n) {
+                if(this.modelLayers[n].visible) {
+                    this._visibleModelLayers[this._visibleModelLayers.length] = this.modelLayers[n];
+                    this._visibleMeshes = this._visibleMeshes.concat(this.modelLayers[n]._visibleMesh_);
+                }
+            }
+        };
+
+        this.onAfterRender = function( renderer, scene, camera ) {
+            for(let n=0, length = this._visibleTerrianLayers.length; n<length; ++n) {
+                this._visibleTerrianLayers[n].visible = true;
+            }
+            for(let n=0, length = this._visibleModelLayers.length; n<length; ++n) {
+                this._visibleModelLayers[n].visible = true;
+            }
+        };
     }
 
     /**
@@ -173,6 +211,8 @@ class ARScene extends  THREE.Scene {
                 return;
             }
         }
+        //
+        this.postLayers[this.postLayers.length] = {name:name, order:order, enable:true, layer:postLayer};
     }
 
     removePostLayer(name) {
@@ -289,7 +329,6 @@ class WindowEventListener {
          * @type {THREE.Group}
          */
         this.tempObj = new THREE.Group();
-        this.viewer.scene.addTemporaryObj(this.tempObj);
 
         /**
          * mouse down 处理函数
@@ -481,6 +520,8 @@ class Viewer {
          * @type {number}
          */
         this.fps = 0;
+
+        this.numFrame = 0;
         /**
          * RenderTechnique 栈
          * 场景将由栈顶 RenderTechnique 对象渲染
@@ -518,40 +559,72 @@ class Viewer {
             return renderTechniqueStack[0];
         }
 
-        let defaultRenderTechnique = new RenderTechnique(this.renderer);
-        let defaultRenderPass = new NormalRenderPass(this.scene, this.camera);
-        defaultRenderTechnique.addRenderPass(defaultRenderPass);
-        this.pushRenderTechnique(defaultRenderTechnique);
+        //let defaultRenderTechnique = new RenderTechnique(this.renderer, this.scene, this.camera);
+        //let defaultRenderPass = new NormalRenderPass(this.scene, this.camera, defaultRenderTechnique.screenRT);
+        //defaultRenderTechnique.addRenderPass(defaultRenderPass);
+        //this.pushRenderTechnique(defaultRenderTechnique);
         //
         let clock = new THREE.Clock();
+
+        let onProjectObject = function(scene, camera, projectObject) {
+            if(!scene._visibleMeshes) {
+                return;
+            }
+            //
+            for(let n=0, length = scene._visibleMeshes.length; n<length; ++n) {
+                let object = scene._visibleMeshes[n];
+                //
+                projectObject(object, camera, this.sortObjects);
+            }
+            //
+            for(let n=0, length = scene._visibleTerrianLayers.length; n<length; ++n) {
+                scene._visibleTerrianLayers[n].visible = false;
+            }
+            for(let n=0, length = scene._visibleModelLayers.length; n<length; ++n) {
+                scene._visibleModelLayers[n].visible = false;
+            }
+        }
+
+        let onRenderShadowMap = function(shadowsArray, scene, camera) {
+            if(!scene._visibleTerrianLayers) {
+                return;
+            }
+            //
+            for(let n=0, length = scene._visibleTerrianLayers.length; n<length; ++n) {
+                scene._visibleTerrianLayers[n].visible = true;
+            }
+            for(let n=0, length = scene._visibleModelLayers.length; n<length; ++n) {
+                scene._visibleModelLayers[n].visible = true;
+            }
+        }
         /**
          * 渲染场景
          */
         this.renderOneFrame =  (()=> {
             let pagedLodSet = new Set();
             //
-            let updateScene = (object, frustum) => {
+            let updateScene = (object, frustum, numFrame) => {
                 for(let n=0, length = this.scene.terrainLayers.length; n<length; ++n) {
                     if(this.scene.terrainLayers[n].visible) {
-                        this.scene.terrainLayers[n].update({camera:this.camera, frustum:frustum});
+                        this.scene.terrainLayers[n].update({camera:this.camera, frustum:frustum, numFrame:numFrame});
                     }
                 }
                 //
                 for(let n=0, length = this.scene.modelLayers.length; n<length; ++n) {
                     if(this.scene.modelLayers[n].visible) {
-                        this.scene.modelLayers[n].update({camera:this.camera, frustum:frustum});
+                        this.scene.modelLayers[n].update({camera:this.camera, frustum:frustum, numFrame:numFrame});
                     }
                 }
                 //
                 for(let n=0, length = this.scene.featureLayers.length; n<length; ++n) {
                     if(this.scene.featureLayers[n].visible) {
-                        this.scene.featureLayers[n].update({camera:this.camera, frustum:frustum});
+                        this.scene.featureLayers[n].update({camera:this.camera, frustum:frustum, numFrame:numFrame});
                     }
                 }
                 //
                 for(let n=0, length = this.scene.arLayers.length; n<length; ++n) {
                     if(this.scene.arLayers[n].visible) {
-                        this.scene.arLayers[n].update({camera:this.camera, frustum:frustum});
+                        this.scene.arLayers[n].update({camera:this.camera, frustum:frustum, numFrame:numFrame});
                     }
                 }
                 //
@@ -562,17 +635,52 @@ class Viewer {
                         continue;
                     }
                     //
-                    if(object instanceof  THREE.PagedLod) {
+                    if(object.isPagedLod) {
                         object.resetVisible(true, true);
                         object.isRoot = true;
                         object.update({camera:this.camera, frustum:frustum});
                         pagedLodSet.add(object);
                     }
-                    else if(object instanceof  THREE.ProxyNode){
+                    else if(object.isProxyNode){
                         object.update({camera:this.camera, frustum:frustum});
                     }
                     else if(object.update !== undefined){
                         object.update({camera:this.camera, frustum:frustum});
+                    }
+                }
+                //
+                this.scene.currentBoundingBox.makeEmpty();
+                //
+                if(this.renderer.shadowMap.enabled || this.camera.atuoCalculateNearFar) {
+                    for(let i=0, numTerrain = this.scene.terrainLayers.length; i<numTerrain; ++i) {
+                        this.scene.currentBoundingBox.expandByBox3(this.scene.terrainLayers[i].getCurrentBoundingBoxWorld());
+                    }
+                    //
+                    for(let i=0, numModelLayer = this.scene.modelLayers.length; i<numModelLayer; ++i) {
+                        this.scene.currentBoundingBox.expandByBox3(this.scene.modelLayers[i].getCurrentBoundingBoxWorld());
+                    }
+                }
+                //
+                for(let n=0, length = this.scene.lightSources.length; n<length; ++n) {
+                    if(this.renderer.shadowMap.enabled && this.scene.lightSources[n].castShadow) {
+                        if(!this.scene.currentBoundingBox.valid())
+                            break;
+                        //
+                        let bb = this.scene.currentBoundingBox.clone().applyMatrix4(this.scene.lightSources[n].shadow.camera.matrixWorldInverse);
+                        //
+                        let tmp = new THREE.Box3();
+                        tmp.expandByPoint(bb.min);
+                        tmp.expandByPoint(bb.max);
+                        //
+                        this.scene.lightSources[n].shadow.camera.left = tmp.min.x;
+                        this.scene.lightSources[n].shadow.camera.right = tmp.max.x;
+                        this.scene.lightSources[n].shadow.camera.top = tmp.max.y;
+                        this.scene.lightSources[n].shadow.camera.bottom = tmp.min.y;
+                        this.scene.lightSources[n].shadow.camera.near = -tmp.max.z;
+                        this.scene.lightSources[n].shadow.camera.far = -tmp.min.z;
+                        //
+                        this.scene.lightSources[n].shadow.camera.updateMatrixWorld();
+                        this.scene.lightSources[n].shadow.camera.updateProjectionMatrix();
                     }
                 }
             }
@@ -584,6 +692,8 @@ class Viewer {
                 if(this.onBeginFrame !== undefined)
                     this.onBeginFrame();
                 //
+                let oldCamera = null;
+                //
                 if(this.active) {
                     this.camera.updateMatrixWorld(true);
                     this.camera.pixelSizeVector = THREE.computePixelSizeVector(this.domElement.clientWidth,this.domElement.clientHeight,
@@ -594,12 +704,38 @@ class Viewer {
                     //
                     pagedLodSet.clear();
                     this.scene.updateMatrixWorld();
-                    updateScene(this.scene, frustum);
+                    updateScene(this.scene, frustum, this.numFrame);
+                    //
+                    if(this.camera.atuoCalculateNearFar && this.scene.currentBoundingBox.valid()) {
+                        oldCamera = this.camera.clone();
+                        let bb = this.scene.currentBoundingBox.clone().applyMatrix4(this.camera.matrixWorldInverse);
+                        let tmp = new THREE.Box3();
+                        tmp.expandByPoint(bb.min);
+                        tmp.expandByPoint(bb.max);
+                        //
+                        if(this.camera.isPerspectiveCamera) {
+                            this.camera.near = -tmp.max.z >= 1.0 ? -tmp.max.z : 1.0;
+                            this.camera.far = -tmp.min.z > this.camera.near ? -tmp.min.z : this.camera.near + 1000;
+                            this.camera.updateProjectionMatrix();
+                        }
+                        else if(this.camera.isOrthographicCamera) {
+                            this.camera.near = -tmp.max.z ;
+                            this.camera.far = -tmp.min.z ;
+                            this.camera.updateProjectionMatrix();
+                        }
+                    }
                 }
+                //
+                this.getCurrentRenderTechnique().renderer.onProjectObject = onProjectObject;
+                this.getCurrentRenderTechnique().renderer.onRenderShadowMap = onRenderShadowMap;
                 //
                 this.getCurrentRenderTechnique().render();
                 //
                 if(this.active) {
+                    if(oldCamera) {
+                        this.camera.copy(oldCamera);
+                        oldCamera = null;
+                    }
                     pagedLodSet.forEach(function(value, key, ownerSet) {
                         key.removeUnExpectedChild(10);
                     });
@@ -611,6 +747,8 @@ class Viewer {
                 //
                 if(this.onEndFrame !== undefined)
                     this.onEndFrame();
+                //
+                this.numFrame++;
             }
         })();
 
@@ -935,18 +1073,6 @@ class Viewer {
         return this.renderer;
     }
 
-    registPostProcessor(name, renderPass, order = 0, PostLayerConstructor = PostLayer) {
-        if(RenderTechnique.registPostProcessor(name, renderPass, order)) {
-            this.scene.addPostLayer(name, order, new PostLayerConstructor());
-        }
-    }
-
-    unregistPostProcessor(name) {
-        if(RenderTechnique.unregistPostProcessor(name)) {
-            this.scene.removePostLayer(name);
-        }
-    }
-
     /**
      * 设置帧开始事件回掉函数
      * @param {function} callBack
@@ -969,6 +1095,7 @@ class Viewer {
      */
     pushEventListenerFront(eventListener) {
         this.eventListenerStack.splice(0,0, eventListener);
+        this.scene.addTemporaryObj(eventListener.tempObj);
     }
 
     /**
@@ -977,6 +1104,7 @@ class Viewer {
      */
     pushEventListenerBack(eventListener) {
         this.eventListenerStack.push(eventListener);
+        this.scene.addTemporaryObj(eventListener.tempObj);
     }
 
     /**
@@ -987,6 +1115,7 @@ class Viewer {
         if(release) {
             this.eventListenerStack[0].release();
         }
+        this.scene.removeTemporaryObj(this.eventListenerStack[0].tempObj);
         this.eventListenerStack.splice(0,1);
     }
 
@@ -998,6 +1127,7 @@ class Viewer {
         if(release) {
             this.eventListenerStack[this.eventListenerStack.length-1].release();
         }
+        this.scene.removeTemporaryObj(this.eventListenerStack[0].tempObj);
         this.eventListenerStack.remove(this.eventListenerStack.length-1);
     }
 

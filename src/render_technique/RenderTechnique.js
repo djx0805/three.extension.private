@@ -6,12 +6,15 @@ class RenderTechnique {
         this.scene = scene;
         this.camera = camera;
         //
+        let pars = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat };
         this.offScreenRT = new THREE.WebGLRenderTarget(this.domElement.clientWidth, this.domElement.clientHeight, pars);
         this.offScreenRT.texture.generateMipmaps = false;
         this.offScreenRT.stencilBuffer = true;
         this.offScreenRT.depthBuffer = true;
         this.offScreenRT.depthTexture = new THREE.DepthTexture(this.domElement.clientWidth, this.domElement.clientHeight,
             THREE.UnsignedInt248Type, undefined, undefined, undefined, THREE.LinearFilter, THREE.LinearFilter, undefined, THREE.DepthStencilFormat);
+        //
+        this.screenRT = {width:this.domElement.clientWidth, height:this.domElement.clientHeight, renderToScreen:true};
     }
 
     setRenderResource(renderer, scene, camera) {
@@ -33,13 +36,13 @@ class RenderTechnique {
     render() {
         let needPostProcess = false;
         for(let n=0, length = this.scene.postLayers.length; n<length; ++n) {
-            if(this.scene.postLayers[n].enable && this.scene.postLayers[n].items.length>0) {
+            if(this.scene.postLayers[n].enable && !this.scene.postLayers[n].layer.isEmpty()) {
                 needPostProcess = true;
                 break;
             }
         }
         //
-        let renderTarget = null;
+        let renderTarget = this.screenRT;
         if(needPostProcess) {
             renderTarget = this.offScreenRT;
         }
@@ -51,6 +54,9 @@ class RenderTechnique {
 
     setSize(width, height) {
         this.offScreenRT.setSize(width, height);
+        this.screenRT.width = width;
+        this.screenRT.height = height;
+        //
         for(let n=0, length = this.renderPasses.length; n<length; ++n) {
             this.renderPasses[n].setSize(width, height);
         }

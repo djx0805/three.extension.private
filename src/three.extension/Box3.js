@@ -11,8 +11,8 @@
  */
 THREE.Box3.prototype.expandByBox3 = function(box3) {
     if(box3.valid()) {
-        this.expandByPoint(box3.min);
-        this.expandByPoint(box3.max);
+        this.min.min( box3.min );
+        this.max.max( box3.max );
     }
 };
 

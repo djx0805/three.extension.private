@@ -42,7 +42,7 @@ class BasicArControls extends  WindowEventListener {
         let mouse = new THREE.Vector2();
 
         mouse.x = ( clientX / this.viewer.domElement.clientWidth ) * 2 - 1;
-        mouse.y = - ( clientY / this.viewer.domElement.innerHeight ) * 2 + 1;
+        mouse.y = - ( clientY / this.viewer.domElement.clientHeight ) * 2 + 1;
 
         raycaster.setFromCamera( mouse, this.viewer.getCamera());
         let intersects = raycaster.intersectObjects( this.viewer.scene.terrainLayers);

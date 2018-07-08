@@ -7,7 +7,8 @@
 THREE.PagedLod = function (dataBasePager) {
     THREE.LOD.call(this);
 
-    this.type = 'PagedLOD';
+    this.type = 'PagedLod';
+    this.isPagedLod = true;
 
     /**
      * 用于设置层次数据的回掉函数
@@ -40,8 +41,8 @@ THREE.PagedLod.prototype.addLevel = function ( url, min, max ) {
  * @param {string} url
  * @returns {boolean}
  */
-THREE.PagedLod.prototype.loadChild = function (url) {
-    return this.dataBasePager.load(url);
+THREE.PagedLod.prototype.loadChild = function (url, frameNumber, weight) {
+    return this.dataBasePager.load(url, frameNumber, false, weight);
 };
 
 /**
@@ -76,7 +77,7 @@ THREE.PagedLod.prototype.removeUnExpectedChild = function (maxFrameCount) {
  * 分页数据更新函数，由渲染循环调用
  * @param {object} context -更新上下文参数
  */
-THREE.PagedLod.prototype.update = function (context) {
+THREE.PagedLod.prototype.update = function (context, visibleMesh) {
     let camera = context.camera;
     let frustum = context.frustum;
     //
@@ -110,14 +111,7 @@ THREE.PagedLod.prototype.update = function (context) {
     else if(this.getRangeMode() === THREE.LOD.RangeMode.PIXEL_SIZE_ON_SCREEN) {
         dis = Math.abs(bs.radius/(bs.center.dot(camera.pixelSizeVector) + camera.pixelSizeVector.w));
         //
-        const v1 = new THREE.Vector3();
-        const v2 = new THREE.Vector3();
-        v1.setFromMatrixPosition( camera.matrixWorld );
-        v2.setFromMatrixPosition( this.matrixWorld );
-        let disToCamera = v1.distanceTo( v2 );
-        if(disToCamera > 1200) {
-            // dis *= 1200.0/disToCamera;
-        }
+        dis*=this.dataBasePager.pageScaleFunc(context, this);
     }
     //
     let visibleObj = [];
@@ -170,6 +164,7 @@ THREE.PagedLod.prototype.update = function (context) {
                     if(this.setLevelDataCallBack) {
                         if(this.setLevelDataCallBack(i, parsedNode)) {
                             afterSucceed();
+                            this.dataBasePager.dispatchEvent({type:'detachNodeToScene', url : this.levels[i].url, node : parsedNode});
                             continue;
                         }
                         else {
@@ -179,12 +174,15 @@ THREE.PagedLod.prototype.update = function (context) {
                             break;
                         }
                     } else {
-                        if(parsedNode instanceof  THREE.Object3D) {
+                        if(parsedNode.isObject3D) {
                             this.children[i] = parsedNode;
                             if(this.children[i].parent)
                                 this.children[i].parent.remove(this.children[i]);
                             //
                             afterSucceed();
+                            //
+                            this.dataBasePager.dispatchEvent({type:'detachNodeToScene', url : this.levels[i].url, node : parsedNode});
+                            //
                             continue;
                         }
                         else {
@@ -207,7 +205,7 @@ THREE.PagedLod.prototype.update = function (context) {
                 }
             }
             else {
-                this.loadChild(this.levels[i].url);
+                this.loadChild(this.levels[i].url, context.numFrame, dis);
                 //
                 if(i>0) {
                     if(this.levels[i].sps[0] >= this.levels[i - 1].sps[1]) {
@@ -269,6 +267,7 @@ THREE.PagedLod.prototype.update = function (context) {
                         if(this.setLevelDataCallBack) {
                             if(this.setLevelDataCallBack(i, parsedNode)) {
                                 afterSucceed();
+                                this.dataBasePager.dispatchEvent({type:'detachNodeToScene', url : this.levels[i].url, node : parsedNode});
                             }
                             else {
                                 afterFailed();
@@ -276,12 +275,14 @@ THREE.PagedLod.prototype.update = function (context) {
                             }
                         }
                         else {
-                            if(parsedNode instanceof  THREE.Object3D) {
+                            if(parsedNode.isObject3D) {
                                 this.children[i] = parsedNode;
                                 if(this.children[i].parent)
                                     this.children[i].parent.remove(this.children[i]);
                                 //
                                 afterSucceed();
+                                //
+                                this.dataBasePager.dispatchEvent({type:'detachNodeToScene', url : this.levels[i].url, node : parsedNode});
                             }
                             else {
                                 console.log("error paresed data");
@@ -301,7 +302,7 @@ THREE.PagedLod.prototype.update = function (context) {
                     }
                 }
                 else {
-                    this.loadChild(this.levels[i].url);
+                    this.loadChild(this.levels[i].url, context.numFrame, dis);
                     //
                     if(i>0) {
                         if(this.levels[i].sps[0] >= this.levels[i - 1].sps[1]) {
@@ -336,52 +337,62 @@ THREE.PagedLod.prototype.update = function (context) {
         this.levels[n].lastVisitFrame++;
     }
     //
-    let lookAt = camera.matrixWorldInverse.getLookAt();
+    let lookAt = context.lookAt ? context.lookAt : camera.matrixWorldInverse.getLookAt();
     let updatingChildren = [];
     //
     for(let n=0, length = visibleObj.length; n<length; ++n) {
         if(visibleObj[n].obj.visible)
             continue;
         //
-        if(visibleObj[n].obj instanceof  THREE.PagedLod){
+        if(visibleObj[n].obj.isPagedLod){
             let bs = visibleObj[n].obj.getBoundingSphereWorld();
             if(frustum.intersectsSphere(bs)) {
                 visibleObj[n].obj.visible = true;
                 visibleObj[n].obj.frustumCulled = false;
                 //
                 if(visibleObj[n].needUpdate) {
-                    updatingChildren[updatingChildren.length] = {child:visibleObj[n].obj, disToEye:lookAt.eye.clone().sub(bs.center).length()};
-                    //visibleObj[n].obj.update(context);
+                    updatingChildren[updatingChildren.length] = {child:visibleObj[n].obj, disToEye:lookAt.eye.clone().sub(bs.center).lengthSq()};
+                    //visibleObj[n].obj.update(context, visibleMesh);
+                }
+                else {
+                    visibleMesh[visibleMesh.length] = visibleObj[n].obj;
                 }
             }
             else {
                 visibleObj[n].obj.visible = false;
             }
         }
-        else if(visibleObj[n].obj instanceof  THREE.Group){
+        else if(visibleObj[n].obj.isGroup){
             let bs = visibleObj[n].obj.getBoundingSphereWorld();
             if(!bs.valid() || frustum.intersectsSphere(bs)) {
                 visibleObj[n].obj.visible = true;
                 visibleObj[n].obj.frustumCulled = false;
                 //
                 if(visibleObj[n].needUpdate) {
-                    updatingChildren[updatingChildren.length] = {child:visibleObj[n].obj, disToEye:lookAt.eye.clone().sub(bs.center).length()};
-                    //visibleObj[n].obj.update(context);
+                    updatingChildren[updatingChildren.length] = {child:visibleObj[n].obj, disToEye:lookAt.eye.clone().sub(bs.center).lengthSq()};
+                    //visibleObj[n].obj.update(context, visibleMesh);
+                }
+                else {
+                    visibleMesh[visibleMesh.length] = visibleObj[n].obj;
                 }
             }
             else {
                 visibleObj[n].obj.visible = false;
             }
         }
-        else if(visibleObj[n].obj instanceof  THREE.Mesh){
+        else if(visibleObj[n].obj.isMesh){
             visibleObj[n].obj.visible = true;
             visibleObj[n].obj.frustumCulled = false;
+            //
+            if(visibleMesh) {
+                visibleMesh[visibleMesh.length] = visibleObj[n].obj;
+            }
         }
     }
     //
     updatingChildren.sort((a,b)=>{return a.disToEye - b.disToEye});
     for(let n=0, length = updatingChildren.length; n<length; ++n) {
-        updatingChildren[n].child.update(context);
+        updatingChildren[n].child.update(context, visibleMesh);
     }
     //
     visibleObj = null;

@@ -106,14 +106,16 @@ class BasicTerrainControls extends  WindowEventListener {
             mouse0.x = ( this.oldMx / this.viewer.domElement.clientWidth ) * 2 - 1;
             mouse0.y = - ( this.oldMy / this.viewer.domElement.clientHeight ) * 2 + 1;
             raycaster0.setFromCamera( mouse0, this.viewer.getCamera());
-            let intersect0 = raycaster0.ray.intersectPlane(this._floorPlane_);
+            let intersect0 = new THREE.Vector3();
+            intersect0 = raycaster0.ray.intersectPlane(this._floorPlane_, intersect0);
             //
             let raycaster = new THREE.Raycaster();
             let mouse = new THREE.Vector2();
             mouse.x = ( clientX / this.viewer.domElement.clientWidth ) * 2 - 1;
             mouse.y = - ( clientY / this.viewer.domElement.clientHeight ) * 2 + 1;
             raycaster.setFromCamera( mouse, this.viewer.getCamera());
-            let intersect1 = raycaster.ray.intersectPlane(this._floorPlane_);
+            let intersect1 = new THREE.Vector3();
+            intersect1 = raycaster.ray.intersectPlane(this._floorPlane_, intersect1);
             //
             let translate = intersect0.sub(intersect1);
             //
@@ -218,7 +220,8 @@ class BasicTerrainControls extends  WindowEventListener {
             mouse.y = - ( wheelEvent.clientY / this.viewer.domElement.clientHeight ) * 2 + 1;
 
             raycaster.setFromCamera( mouse, this.viewer.getCamera());
-            let intersectP = raycaster.ray.intersectPlane(terrainBottomPlane);
+            let intersectP = new THREE.Vector3();
+            intersectP = raycaster.ray.intersectPlane(terrainBottomPlane, intersectP);
 
             if(intersectP) {
                 let look_at = this.viewer.camera.matrixWorldInverse.getLookAt();

@@ -12,6 +12,26 @@ class ModelLayer extends THREE.Group {
         this._clock_ = new THREE.Clock();
         //
         this._modelCache_ = new Map();
+        //
+        this._visibleMesh_ = [];
+        //
+        this.getCurrentBoundingBoxWorld = function () {
+            let bb = new THREE.Box3();
+            for(let n=0, length = this._visibleMesh_.length; n<length; ++n) {
+                bb.expandByBox3(this._visibleMesh_[n].getBoundingBoxWorld());
+            }
+            //
+            return bb;
+        };
+        //
+        this.getCurrentBoundingSphereWorld = function () {
+            let bs = new THREE.Sphere();
+            for(let n=0, length = this._visibleMesh_.length; n<length; ++n) {
+                bs.expandBySphere(this._visibleMesh_[n].getBoundingSphereWorld());
+            }
+            //
+            return bs;
+        };
     }
 
     /**
@@ -21,7 +41,9 @@ class ModelLayer extends THREE.Group {
      */
     addThreeObj(obj, pos) {
         obj.isPlantModel = true;
-        obj.position.copy(pos);
+        if(pos) {
+            obj.position.copy(pos);
+        }
         this.add(obj);
         //
         this.dispatchEvent({type:"addnode", object:obj});
@@ -35,46 +57,33 @@ class ModelLayer extends THREE.Group {
      */
     addModelByURL(url, pos) {
        if(url.substr(-4, 4) === ".fbx") {
-           if(this._modelCache_.has(url)) {
-               let object = this._modelCache_.get(url).clone();
+           var loader = new THREE.FBXLoader();
+           loader.load( url,( model )=> {
+               this._modelCache_.set(url, model);
+               //
+               let object = model;
                object.isPlantModel = true;
-               object.position.copy(pos);
+               if(pos) {
+                   object.position.copy(pos);
+               }
                object.mixer = new THREE.AnimationMixer( object );
-               this.__mixers__.push( object.mixer );
+               this._mixers_.push( object.mixer );
 
                var action = object.mixer.clipAction( object.animations[ 0 ] );
                action.play();
                this.add( object );
                //
                this.dispatchEvent({type:"addnode", url:url, object:object});
-           }
-           else {
-               var loader = new THREE.FBXLoader();
-               loader.load( url,( model )=> {
-                   this._modelCache_.set(url, model);
-                   //
-                   let object = model.clone();
-                   object.isPlantModel = true;
-                   object.position.copy(pos);
-                   object.mixer = new THREE.AnimationMixer( object );
-                   this._mixers_.push( object.mixer );
-
-                   var action = object.mixer.clipAction( object.animations[ 0 ] );
-                   action.play();
-                   this.add( object );
-                   //
-                   this.dispatchEvent({type:"addnode", url:url, object:object});
-                   //
-
-               } );
-           }
+           } );
        }
        else if(url.substr(-4, 4) === ".obj") {
            if(this._modelCache_.has(url)) {
                let object = this._modelCache_.get(url).clone();
                //
                object.isPlantModel = true;
-               object.position.copy(pos);
+               if(pos) {
+                   object.position.copy(pos);
+               }
                this.add( object );
                this.dispatchEvent({type:"addnode", url: url, object:object});
            }
@@ -86,7 +95,9 @@ class ModelLayer extends THREE.Group {
                    let object = event.detail.loaderRootNode.clone();
                    //
                    object.isPlantModel = true;
-                   object.position.copy(pos);
+                   if(pos) {
+                       object.position.copy(pos);
+                   }
                    this.add( object );
                    this.dispatchEvent({type:"addnode", url:url, object:object});
                };
@@ -114,6 +125,8 @@ class ModelLayer extends THREE.Group {
     }
 
     update(context) {
+        this._visibleMesh_ = [];
+        //
         if(!this.visible)
             return;
         //
@@ -122,7 +135,11 @@ class ModelLayer extends THREE.Group {
             this._mixers_[ i ].update(delta);
         }
         //
-        super.update(context);
+        if(!context.lookAt) {
+            context.lookAt = context.camera.matrixWorldInverse.getLookAt();
+        }
+        //
+        super.update(context, this._visibleMesh_);
     }
 }
 

@@ -86,7 +86,7 @@ class OutLineRenderPass extends RenderPass {
             return tmp;
         };
         let materialReplace = (object)=>{
-            currentOutLineColor = object.outlineColor ? object.outlineColor : this.outlineColor;
+            currentOutLineColor = object.outlineColor ? object.outlineColor : currentOutLineColor;
             //
             if(object.material) {
                 if(object.maskMaterial) {
@@ -143,24 +143,23 @@ class OutLineRenderPass extends RenderPass {
         //
         let noSelectUnVisibleObjs = [];
         //
-        let  outlineObjDepthRT = new THREE.WebGLRenderTarget(renderer.domElement.clientWidth, renderer.domElement.clientHeight, pars);
+        let  outlineObjDepthRT = new THREE.WebGLRenderTarget(this.renderTarget.width, this.renderTarget.height, pars);
         outlineObjDepthRT.texture.generateMipmaps = false;
-        outlineObjDepthRT.depthTexture = new THREE.DepthTexture(renderer.domElement.clientWidth, renderer.domElement.clientHeight,
+        outlineObjDepthRT.depthTexture = new THREE.DepthTexture(this.renderTarget.width, this.renderTarget.height,
             THREE.UnsignedInt248Type, undefined, undefined, undefined, THREE.LinearFilter, THREE.LinearFilter, undefined, THREE.DepthStencilFormat);
         let outlineObjDepthRenderPass = new RenderPass(scene, camera);
-        outlineObjDepthRenderPass.outLineObjs = outLineObjs;
         outlineObjDepthRenderPass.render = function (renderer) {
             this.scene = outLineRenderPass.scene;
             this.camera = outLineRenderPass.camera;
             //
-            if(this.outLineObjs.length === 0)
+            if(outLineObjs.length === 0)
                 return false;
             //
             noSelectUnVisibleObjs = [];
             //
             let unvisibleNoSelectObjs = (object)=>{
-                if(this.outLineObjs.indexOf(object) >= 0) {
-                    object.visible = true;
+                if(outLineObjs.indexOf(object) >= 0) {
+                    //object.visible = true;
                     return;
                 }
                 //
@@ -194,9 +193,9 @@ class OutLineRenderPass extends RenderPass {
                     }
                 }
             }
-            for(let i=0; i<this.outLineObjs.length; ++i) {
-                materialReplace(this.outLineObjs[i]);
-                setMaskMaterial(this.outLineObjs[i]);
+            for(let i=0; i<outLineObjs.length; ++i) {
+                materialReplace(outLineObjs[i]);
+                setMaskMaterial(outLineObjs[i]);
             }
             //
             renderer.render(this.scene, this.camera, outlineObjDepthRT);
@@ -211,8 +210,8 @@ class OutLineRenderPass extends RenderPass {
                     }
                 }
             }
-            for(let i=0; i<this.outLineObjs.length; ++i) {
-                unsetMaskMaterial(this.outLineObjs[i]);
+            for(let i=0; i<outLineObjs.length; ++i) {
+                unsetMaskMaterial(outLineObjs[i]);
             }
             //
             return true;
@@ -275,7 +274,7 @@ class OutLineRenderPass extends RenderPass {
         quad.frustumCulled = false;
         tmpScene.add( quad );
         //
-        let outlineObjMaskRT = new THREE.WebGLRenderTarget( renderer.domElement.clientWidth, renderer.domElement.clientHeight, pars );
+        let outlineObjMaskRT = new THREE.WebGLRenderTarget( this.renderTarget.width, this.renderTarget.height, pars );
         outlineObjMaskRT.texture.generateMipmaps = false;
 
         let outlineObjMaskRenderPass = new RenderPass(tmpScene, orthoCamera);
@@ -283,7 +282,7 @@ class OutLineRenderPass extends RenderPass {
         outlineObjMaskRenderPass.renderCamera = this.camera;
         outlineObjMaskRenderPass.render = function (renderer) {
             let frustum = this.renderCamera.isPerspectiveCamera ? this.renderCamera.projectionMatrix.getFrustum() : this.renderCamera.projectionMatrix.getOrtho();
-            quad.material.uniforms[ "depthTexture0" ].value = offScreenRT.depthTexture;
+            quad.material.uniforms[ "depthTexture0" ].value = outLineRenderPass.renderTarget.depthTexture;
             quad.material.uniforms[ "depthTexture1" ].value = outlineObjDepthRT.depthTexture;
             quad.material.uniforms[ "colorMask"].value = outlineObjDepthRT.texture;
             quad.material.uniforms[ "cameraNear" ].value = frustum.zNear;
@@ -299,7 +298,7 @@ class OutLineRenderPass extends RenderPass {
                 uniforms: {
                     "maskTexture": { value: null },
                     "edgeColor": { value: new THREE.Vector3( 1.0, 1.0, 0.0 ) },
-                    "resolution": { value: new THREE.Vector2(renderer.domElement.clientWidth, renderer.domElement.clientHeight)},
+                    "resolution": { value: new THREE.Vector2(outlineObjMaskRT.width, outlineObjMaskRT.height)},
                 },
 
                 vertexShader:
@@ -388,7 +387,7 @@ class OutLineRenderPass extends RenderPass {
         let tmpScene1 = new THREE.Scene();
         tmpScene1.add(quad1);
 
-        let outLineRT = new THREE.WebGLRenderTarget( renderer.domElement.clientWidth, renderer.domElement.clientHeight, pars );
+        let outLineRT = new THREE.WebGLRenderTarget( this.renderTarget.width, this.renderTarget.height, pars );
         outLineRT.texture.name = "outline";
         outLineRT.texture.generateMipmaps = false;
 
@@ -396,14 +395,14 @@ class OutLineRenderPass extends RenderPass {
         outlineGeneratePass.render = function (renderer) {
             quad1.material.uniforms[ "maskTexture" ].value = outlineObjMaskRT.texture;
             quad1.material.uniforms[ "edgeColor" ].value = new THREE.Vector3( 1.0, 1.0, 0.0 );
-            quad1.material.uniforms[ "resolution" ].value = new THREE.Vector2(renderer.domElement.clientWidth, renderer.domElement.clientHeight);
+            quad1.material.uniforms[ "resolution" ].value = new THREE.Vector2(outLineRT.width, outLineRT.height);
             //
             renderer.render(this.scene, this.camera, outLineRT);
             //
             return true;
         }
         //
-        let screenImgRT = new THREE.WebGLRenderTarget( renderer.domElement.clientWidth, renderer.domElement.clientHeight, pars);
+        let screenImgRT = new THREE.WebGLRenderTarget( this.renderTarget.width, this.renderTarget.height, pars);
         screenImgRT.texture.name = "screenImg";
         screenImgRT.texture.generateMipmaps = false;
         let getOutPutMaterial = ()=> {
@@ -459,13 +458,13 @@ class OutLineRenderPass extends RenderPass {
         };
         //
         this.render = (renderer)=> {
-            if(!this.renderTarget)
+            if(this.renderTarget.renderToScreen)
                 return false;
             //
-            this.outLineObjs = [];
+            outLineObjs = [];
             let layers = this.scene.getPostLayer('OutLineObjLayer');
             for(let i=0; i<layers.length; ++i) {
-                this.outLineObjs = this.outLineObjs.concat(layers[i].layer.getOutLineObjs());
+                outLineObjs = outLineObjs.concat(layers[i].layer.getOutLineObjs());
             }
             //
             if(outlineObjDepthRenderPass.render(renderer)) {

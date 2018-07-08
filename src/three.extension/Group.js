@@ -20,29 +20,35 @@ THREE.Group.prototype.removeUnExpectedChild = function (maxFrameCount) {
  * 更新函数，由渲染循环调用
  * @param {object} context -更新上下文参数
  */
-THREE.Group.prototype.update = function (context) {
+THREE.Group.prototype.update = function (context, visibleMesh) {
     this.visible = true;
     let updatingChildren = [];
-    let lookAt = context.camera.matrixWorldInverse.getLookAt();
+    let lookAt = context.lookAt ? context.lookAt : context.camera.matrixWorldInverse.getLookAt();
     for(let n=0, length = this.children.length; n<length; n++) {
         const bs = this.children[n].getBoundingSphereWorld();
         if(!bs.valid() || context.frustum.intersectsSphere(bs)) {
             this.children[n].visible = true;
             this.children[n].frustumCulled = false;
+            //
+            if(visibleMesh && (this.children[n].isMesh || this.children[n].isLine || this.children[n].isPoints)) {
+                visibleMesh[visibleMesh.length] = this.children[n];
+            }
         }
         else {
             this.children[n].visible = false;
         }
         //
         if(this.children[n].update) {
-            updatingChildren[updatingChildren.length] = {child:this.children[n], disToEye:lookAt.eye.clone().sub(bs.center).length()};
-            //this.children[n].update(context);
+            if(!bs.valid() || !context.dataBasePager || !context.dataBasePager.cullGroup || context.frustum.intersectsSphere(bs)) {
+                updatingChildren[updatingChildren.length] = {child:this.children[n], disToEye:lookAt.eye.clone().sub(bs.center).lengthSq()};
+            }
+            //this.children[n].update(context, visibleMesh);
         }
     }
     //
     updatingChildren.sort((a,b)=> {return a.disToEye - b.disToEye});
     for(let n=0, length = updatingChildren.length; n<length; ++n) {
-        updatingChildren[n].child.update(context);
+        updatingChildren[n].child.update(context, visibleMesh);
     }
 };
 
