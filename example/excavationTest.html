@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>TJH  ar.js</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background:#000;
+				color:#fff;
+				padding:0;
+				margin:0;
+				font-weight: bold;
+				overflow:hidden;
+			}
+
+			#info {
+				position: absolute;
+				top: 0px; width: 100%;
+				color: #ffffff;
+				padding: 5px;
+				font-family: Monospace;
+				font-size: 13px;
+				text-align: center;
+				z-index:100;
+			}
+
+			a { color:red }
+
+		</style>
+	</head>
+
+	<body>
+	    <div id="container"></div>
+
+		<script src="../build/three.js"></script>
+		<script src="../build/three.extension.js"></script>
+		<script src="../build/tjh.util.js"></script>
+		<script src="../build/tjh.ar.js"></script>
+		<script src="../build/tjh.ar.tools.js"></script>
+		<script src="../node_modules/three/examples/js/Detector.js"></script>
+		<script src="../node_modules/three/examples/js/libs/stats.min.js"></script>
+		<script src="../node_modules/jquery/dist/jquery.min.js"></script>
+		<script src="../build/extension/jsts.min.js"></script>
+		<script src="../build/extension/excavation.js"></script>
+		<script src="../build/extension/earthworkCaculate.js"></script>
+		<script>
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var container, stats;
+
+			var camera, scene, renderer, excavationLayer;
+
+			var geometry, objects;
+
+			var controls, clock = new THREE.Clock();
+
+			var viewer = new tjh.ar.Viewer();
+			viewer.onEndFrame = ()=> {
+			    stats.update();
+			}
+
+			init();
+			viewer.setBeginFrameCallBack(function () {
+				//controls.update();
+            })
+			viewer.run();
+
+			function init() {
+
+				container = document.getElementById( 'container' );
+				document.body.appendChild( container );
+
+                renderer = new THREE.WebGLRenderer();
+                renderer.setPixelRatio( window.devicePixelRatio );
+                renderer.setSize( window.innerWidth, window.innerHeight );
+                container.appendChild( renderer.domElement );
+                viewer.setRenderer(renderer);
+                //
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 1500000 );
+				viewer.setCamera(camera);
+                //
+				//controls = new THREE.TrackballControls( this.camera, this.renderer.domElement );
+				//
+                //camera.position.set(-618,510,2000);
+                //camera.lookAt(new THREE.Vector3(-618, 510, 31.14));
+
+                camera.position.set(-1274.28,-425.81,2000);
+                camera.lookAt(new THREE.Vector3(-1274.28,-425.81, 52));
+
+				scene = new tjh.ar.ARScene();
+				scene.fog = new THREE.Fog( 0x000000, 1, 15000 );
+				scene.autoUpdate = false;
+                excavationLayer = new ExcavationLayer();
+				scene.addPostLayer('ExcavationLayer', 0, excavationLayer);
+				viewer.setScene(scene);
+
+                controls = new tjh.ar.BasicTerrainControls(viewer);
+                viewer.pushEventListenerFront(controls);
+
+                var ambientLight = new THREE.AmbientLight( 0xffffff );
+                scene.addLightSource( ambientLight );
+
+				var light = new THREE.DirectionalLight( 0xffffff );
+				light.position.set( 0, 0, 1 ).normalize();
+				//scene.addLightSource( light );
+
+				var terrainLayer = new tjh.ar.TerrainLayer();
+				terrainLayer.dataBasePager.maxWaitingLoaded = 1;
+				terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=b47d9478-56f6-4d20-9dbb-93d05b624744");
+
+
+                //terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=44d36b01-25d6-45b9-81b9-1bf755877248");
+                //terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=e3412e05-37e3-4256-b3aa-4ee9e0c3ae48");
+
+
+				/*var pagedLod0 = new THREE.PagedLod();
+				pagedLod0.addLevel("root.osgjs", 0, 100000);
+				pagedLod0.setRangeMode(THREE.LOD.RangeMode.PIXEL_SIZE_ON_SCREEN);
+				pagedLod0.boundingSphere = new THREE.Sphere(new THREE.Vector3(-618, 510, 31.14), 522);
+                scene.add( pagedLod0 );*/
+				scene.addTerrainLayer(terrainLayer);
+				//
+				var tjhModelLayer = new tjh.ar.TJHModelLayer("192.168.10.232", 1080, "b47d9478-56f6-4d20-9dbb-93d05b624111");
+				scene.addModelLayer(tjhModelLayer);
+				//
+                let bound = [new THREE.Vector3(-1274.28 - 100,-425.81 - 100,52), new THREE.Vector3(-1274.28 - 100,-425.81 + 100,52), new THREE.Vector3(-1274.28 + 100,-425.81 + 100,52), new THREE.Vector3(-1274.28 + 100,-425.81 - 100,52), new THREE.Vector3(-1274.28 - 100,-425.81 - 100,52)];
+                let exNode = excavationLayer.addExcavationNode(bound, 50);
+                //let defaultRenderTechnique = new tjh.ar.RenderTechnique(renderer);
+                //let defaultRenderPass = new tjh.ar.NormalRenderPass(scene, camera);
+                //defaultRenderTechnique.addRenderPass(defaultRenderPass);
+                //viewer.pushRenderTechnique(defaultRenderTechnique);
+				let earthwork = caculateEarthWork(exNode.boundCoords, exNode.depth);
+				console.log(earthwork);
+
+                let defaultRenderTechnique = new tjh.ar.RenderTechnique(renderer, scene, camera);
+                let normalRenderPass = new tjh.ar.NormalRenderPass(scene, camera, defaultRenderTechnique.screenRT);
+                let outlineRenderPass = new tjh.ar.OutLineRenderPass(scene, camera, defaultRenderTechnique.offScreenRT);
+                let excavationRenderPass = new ExcavationRenderPass(scene, camera, defaultRenderTechnique.offScreenRT);
+                let outPutRenderPass = new tjh.ar.OutPutRenderPass(scene, camera, defaultRenderTechnique.offScreenRT);
+                defaultRenderTechnique.addRenderPass(normalRenderPass);
+                defaultRenderTechnique.addRenderPass(outlineRenderPass);
+                defaultRenderTechnique.addRenderPass(excavationRenderPass);
+                defaultRenderTechnique.addRenderPass(outPutRenderPass);
+                viewer.pushRenderTechnique(defaultRenderTechnique);
+                //
+                var selectTool = null;
+                //
+                class SelectEvent extends tjh.ar.WindowEventListener {
+                    constructor(viewer) {
+                        super(viewer);
+                        //
+                        this.onKeyDown = (keyboardEvent)=> {
+                            if((keyboardEvent.keyCode === 115 || keyboardEvent.keyCode === 83)) {
+                                if (!selectTool) {
+                                    selectTool = new tjh.ar.tools.PointSelectTool(viewer, camera, true, viewer.scene.modelLayers);
+                                    viewer.pushEventListenerFront(selectTool);
+                                    return true;
+                                }
+                                else {
+                                    viewer.removeEventListenerFront();
+                                    selectTool = null;
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+                viewer.pushEventListenerFront(new SelectEvent(viewer));
+				//
+                stats = new Stats();
+                container.appendChild( stats.dom );
+			}
+		</script>
+
+	</body>
+</html>

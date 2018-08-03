@@ -161,6 +161,14 @@ class NormalRenderPass extends RenderPass {
             }
             //
             for(let i=0, numFtLayer = this.scene.featureLayers.length; i<numFtLayer; ++i) {
+                if(!this.scene.featureLayers[i].visible) {
+                    continue;
+                }
+                if(this.scene.featureLayers[i].lineMaterial) {
+                    this.scene.featureLayers[i].lineMaterial.uniforms["resolution"].value.set(this.renderTarget.width, this.renderTarget.height);
+                    this.scene.featureLayers[i].lineMaterial.needUpdate = true;
+                }
+                //
                 if(this.scene.featureLayers[i].visible && this.scene.featureLayers[i].regulator.fitPattern <= FeatureLayer.FIT_PATTERN.FIT_TERRIAN_HIGH) {
                     this.scene.featureLayers[i].memDepthSampler = depthBufferUpdated ? memDepthSapmler : null;
                     //
@@ -177,8 +185,7 @@ class NormalRenderPass extends RenderPass {
                         this.scene.featureLayers[i].lineMaterial.uniforms["textureSize"].value.set(this.renderTarget.width, this.renderTarget.height);
                         this.scene.featureLayers[i].lineMaterial.uniforms["depthCameraNearFar"].value = terrainDepthCameraNearFar;
                         this.scene.featureLayers[i].lineMaterial.uniforms["textureMatrix"].value = textureMatrix;
-                        this.scene.featureLayers[i].lineMaterial.uniforms["textureRange"].value = new THREE.Vector4(visibleTerrainRange.min.x, visibleTerrainRange.min.y, visibleTerrainRange.max.x, visibleTerrainRange.max.y);
-                        this.scene.featureLayers[i].lineMaterial.needUpdate = true;
+                        this.scene.featureLayers[i].lineMaterial.uniforms["textureRange"].value.set(visibleTerrainRange.min.x, visibleTerrainRange.min.y, visibleTerrainRange.max.x, visibleTerrainRange.max.y);
                     }
                     if(this.scene.featureLayers[i].regulator.fitPattern <= FeatureLayer.FIT_PATTERN.FIT_TERRIAN_HIGH && this.scene.featureLayers[i].polygonMaterial) {
                         this.scene.featureLayers[i].polygonMaterial.uniforms["depthTexture"].value = terrainDepthRT.texture;

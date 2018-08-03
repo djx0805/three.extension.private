@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>TJH  ar.js</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link rel="stylesheet" href="../node_modules/bootstrap/dist/css/bootstrap.min.css">
+		<style>
+			html,body{
+				height:100%;
+				width:100%;
+			}
+			body {
+				background:#000;
+				color:#fff;
+				padding:0;
+				margin:0;
+				font-weight: bold;
+				overflow:hidden;
+			}
+			#container{
+				height:100%;
+				width:100%;
+			}
+			#info {
+				position: absolute;
+				left: 0px;
+				top: 0px; width: 100%;
+				color: #ffffff;
+				padding: 5px;
+				font-family: Monospace;
+				font-size: 13px;
+				text-align: center;
+				z-index:100;
+			}
+
+
+			a { color:red }
+			#fiew{
+				width:100% !important;
+				height:100% !important;
+			}
+
+		</style>
+	</head>
+
+	<body>
+	    <div id="container" class="col-sm-12">
+			<canvas id="fiew"></canvas>
+		</div>
+
+		<script src="../build/three.js"></script>
+		<script src="../build/three.extension.js"></script>
+		<script src="../build/tjh.ar.js"></script>
+		<script src="../build/tjh.ar.tools.js"></script>
+		<script src="../node_modules/three/examples/js/Detector.js"></script>
+		<script src="../node_modules/three/examples/js/libs/stats.min.js"></script>
+		<script src="../node_modules/jquery/dist/jquery.min.js"></script>
+		<script src="../node_modules/bootstrap/dist/js/bootstrap.js"></script>
+		<script>
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var container, stats;
+
+			var camera, scene, renderer;
+
+			var geometry, objects;
+
+			var controls, clock = new THREE.Clock();
+var fiew = document.getElementById('fiew');
+fiew.offsetLeft = 0;
+fiew.offsetTop = 0;
+
+			var viewer = new tjh.ar.Viewer(fiew);
+			viewer.onEndFrame = ()=> {
+			    stats.update();
+			}
+
+			init();
+			viewer.setBeginFrameCallBack(function () {
+				//controls.update();
+            })
+			viewer.run();
+
+			function init() {
+
+				container = document.getElementById( 'container' );
+				document.body.appendChild( container );
+
+                renderer = viewer.getRenderer();
+                renderer.setPixelRatio( window.devicePixelRatio );
+                renderer.setSize( window.innerWidth, window.innerHeight );
+                viewer.setRenderer(renderer);
+                //
+				//camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 1500000 );
+				camera = new THREE.OrthographicCamera(-window.innerWidth/2, window.innerWidth/2, window.innerHeight/2, -window.innerHeight/2, 1, 1500000);
+				viewer.setCamera(camera);
+                //
+				//controls = new THREE.TrackballControls( this.camera, this.renderer.domElement );
+				//
+                //camera.position.set(-618,510,2000);
+                //camera.lookAt(new THREE.Vector3(-618, 510, 31.14));
+
+                camera.position.set(-1274.28,-425.81,2000);
+                camera.lookAt(new THREE.Vector3(-1274.28,-425.81, 52));
+
+				scene = new tjh.ar.ARScene();
+				scene.fog = new THREE.Fog( 0x000000, 1, 15000 );
+				scene.autoUpdate = false;
+				viewer.setScene(scene);
+
+                controls = new tjh.ar.BasicTerrainControls(viewer);
+                viewer.pushEventListenerFront(controls);
+
+                var ambientLight = new THREE.AmbientLight( 0xffffff );
+                scene.addLightSource( ambientLight );
+
+				var light = new THREE.DirectionalLight( 0xffffff );
+				light.position.set( 0, 0, 1 ).normalize();
+				//scene.addLightSource( light );
+
+				var terrainLayer = new tjh.ar.TerrainLayer();
+				terrainLayer.dataBasePager.maxWaitingLoaded = 1;
+				terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=b47d9478-56f6-4d20-9dbb-93d05b624744");
+
+
+                //terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=44d36b01-25d6-45b9-81b9-1bf755877248");
+                //terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=e3412e05-37e3-4256-b3aa-4ee9e0c3ae48");
+
+
+				/*var pagedLod0 = new THREE.PagedLod();
+				pagedLod0.addLevel("root.osgjs", 0, 100000);
+				pagedLod0.setRangeMode(THREE.LOD.RangeMode.PIXEL_SIZE_ON_SCREEN);
+				pagedLod0.boundingSphere = new THREE.Sphere(new THREE.Vector3(-618, 510, 31.14), 522);
+                scene.add( pagedLod0 );*/
+				scene.addTerrainLayer(terrainLayer);
+				//
+				var tjhModelLayer = new tjh.ar.TJHModelLayer("192.168.10.232", 1080, "b47d9478-56f6-4d20-9dbb-93d05b624111");
+				scene.addModelLayer(tjhModelLayer);
+				//
+                let defaultRenderTechnique = new tjh.ar.OutLineTechnique(renderer, scene, camera);
+                viewer.pushRenderTechnique(defaultRenderTechnique);
+                //
+                var selectTool = null;
+                //
+                class SelectEvent extends tjh.ar.WindowEventListener {
+                    constructor(viewer) {
+                        super(viewer);
+                        //
+                        this.onKeyDown = (keyboardEvent)=> {
+                            if((keyboardEvent.keyCode === 115 || keyboardEvent.keyCode === 83)) {
+                                if (!selectTool) {
+                                    selectTool = new tjh.ar.tools.PointSelectTool(viewer, camera, viewer.scene.modelLayers);
+                                    viewer.pushEventListenerFront(selectTool);
+                                    return true;
+                                }
+                                else {
+                                    viewer.removeEventListenerFront();
+                                    selectTool = null;
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+                viewer.pushEventListenerFront(new SelectEvent(viewer));
+				//
+                stats = new Stats();
+                container.appendChild( stats.dom );
+			}
+		</script>
+
+	</body>
+</html>

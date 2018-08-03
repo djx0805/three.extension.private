@@ -351,9 +351,17 @@ THREE.DataBasePager.prototype.proxyParse = function (proxy, node, meshes, textur
                         ++textures[proxy.material[n].texture.url].nReference;
                     }
                     else {
-                        let textureLoader = new THREE.TextureLoader();
+                        let textureLoader = null;
+                        let texture = null;
                         let netUrl = encodeURIComponent(proxy.material[n].texture.url);
-                        let texture = textureLoader.load(proxy.material[n].texture.url, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+                        if(netUrl.substr(-4, 4) === '.dds') {
+                            textureLoader = new THREE.CompressedTextureLoader();
+                            texture = textureLoader.load(proxy.material[n].texture.url, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+                        }
+                        else {
+                            textureLoader = new THREE.TextureLoader();
+                            texture = textureLoader.load(proxy.material[n].texture.url, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+                        }
                         texture.wrapS = proxy.material[n].texture.wrapS;
                         texture.wrapT = proxy.material[n].texture.wrapT;
                         texture.minFilter = proxy.material[n].texture.minFilter;
@@ -392,9 +400,17 @@ THREE.DataBasePager.prototype.proxyParse = function (proxy, node, meshes, textur
                         ++textures[proxy.material.texture.url].nReference;
                     }
                     else {
-                        let textureLoader = new THREE.TextureLoader();
+                        let textureLoader = null;
                         let netUrl = encodeURIComponent(proxy.material.texture.url);
-                        let texture = textureLoader.load(proxy.material.texture.url, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+                        let texture = null;
+                        if(netUrl.substr(-4, 4) === '.dds') {
+                            textureLoader = new THREE.CompressedTextureLoader();
+                            texture = textureLoader.load(proxy.material.texture.url, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+                        }
+                        else {
+                            textureLoader = new THREE.TextureLoader();
+                            texture = textureLoader.load(proxy.material.texture.url, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+                        }
                         texture.wrapS = proxy.material.texture.wrapS;
                         texture.wrapT = proxy.material.texture.wrapT;
                         texture.minFilter = proxy.material.texture.minFilter;

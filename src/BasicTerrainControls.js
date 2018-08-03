@@ -12,7 +12,8 @@ class BasicTerrainControls extends  WindowEventListener {
         //
         this.geomRotateFlag = new THREE.Group();
         let geometry = new THREE.ConeGeometry( 5, 20, 32 );
-        let material = new THREE.MeshBasicMaterial( {color: 0xffff00} );
+        let material = new THREE.MeshLambertMaterial( {color: 0xffff00} );
+        material.lights = true;
         let cone = new THREE.Mesh( geometry, material );
         cone.setRotationFromAxisAngle(new  THREE.Vector3(-1,0,0), 3.1415926/2);
         this.geomRotateFlag.add(cone);
@@ -32,17 +33,29 @@ class BasicTerrainControls extends  WindowEventListener {
     onLeftDown(mouseEvent) {
         this.leftBtnDown = true;
         //
-        let terrainBox = new THREE.Box3();
-        for(let n=0; n < this.viewer.scene.terrainLayers.length; ++n) {
-            terrainBox.expandByBox3(this.viewer.scene.terrainLayers[n].getBoundingBoxWorld());
+        if(this.viewer.camera.isPerspectiveCamera) {
+            let terrainBox = new THREE.Box3();
+            for(let n=0; n < this.viewer.scene.terrainLayers.length; ++n) {
+                terrainBox.expandByBox3(this.viewer.scene.terrainLayers[n].getBoundingBoxWorld());
+            }
+            if(terrainBox.valid()) {
+                this._floorPlane_ = new THREE.Plane();
+                this._floorPlane_.setFromNormalAndCoplanarPoint(new THREE.Vector3(0,0,1), terrainBox.min);
+            }
+            else {
+                this._floorPlane_ = new THREE.Plane();
+                this._floorPlane_.setFromNormalAndCoplanarPoint(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0));
+            }
         }
-        if(terrainBox.valid()) {
+        else if(this.viewer.camera.isOrthographicCamera) {
+            let terrainBs = new THREE.Sphere();
+            for(let n=0; n < this.viewer.scene.terrainLayers.length; ++n) {
+                terrainBs.expandBySphere(this.viewer.scene.terrainLayers[n].getBoundingSphereWorld());
+            }
+            //
             this._floorPlane_ = new THREE.Plane();
-            this._floorPlane_.setFromNormalAndCoplanarPoint(new THREE.Vector3(0,0,1), terrainBox.min);
-        }
-        else {
-            this._floorPlane_ = new THREE.Plane();
-            this._floorPlane_.setFromNormalAndCoplanarPoint(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0));
+            let lookAt = this.viewer.camera.matrixWorldInverse.getLookAt();
+            this._floorPlane_.setFromNormalAndCoplanarPoint(lookAt.lookDirection, terrainBs.center.add(lookAt.lookDirection.clone().multiplyScalar(terrainBs.radius)));
         }
         //
         return true;
@@ -59,6 +72,10 @@ class BasicTerrainControls extends  WindowEventListener {
         mouse.y = - ( clientY / this.viewer.domElement.clientHeight ) * 2 + 1;
 
         raycaster.setFromCamera( mouse, this.viewer.getCamera());
+        if(this.viewer.getCamera().isOrthographicCamera) {
+            let testOrigin = new THREE.Vector3(mouse.x, mouse.y, -1).unproject(this.viewer.getCamera());
+            raycaster.ray.origin.copy(testOrigin);
+        }
         let intersects = raycaster.intersectObjects( this.viewer.scene.terrainLayers);
 
         if(intersects.length <= 0) {
@@ -70,6 +87,12 @@ class BasicTerrainControls extends  WindowEventListener {
         // 相交视椎体添加到temporaryObj图层中
         this.geomRotateFlag.position.set(this.intersectionPos.x, this.intersectionPos.y, this.intersectionPos.z);
         this.geomRotateFlag.updateMatrix();
+        //
+        let scale = 3 *(this.geomRotateFlag.position.clone().dot(this.viewer.camera.pixelSizeVector)+ this.viewer.camera.pixelSizeVector.w);
+        scale = scale > 0 ? scale : -scale;
+        this.geomRotateFlag.scale.set(scale, scale, scale);
+        this.geomRotateFlag.updateMatrix();
+        //
         this.tempObj.add(this.geomRotateFlag);
         //
         this.middleBtnDown = true;
@@ -106,6 +129,10 @@ class BasicTerrainControls extends  WindowEventListener {
             mouse0.x = ( this.oldMx / this.viewer.domElement.clientWidth ) * 2 - 1;
             mouse0.y = - ( this.oldMy / this.viewer.domElement.clientHeight ) * 2 + 1;
             raycaster0.setFromCamera( mouse0, this.viewer.getCamera());
+            if(this.viewer.getCamera().isOrthographicCamera) {
+                let testOrigin = new THREE.Vector3(mouse0.x, mouse0.y, -1).unproject(this.viewer.getCamera());
+                raycaster0.ray.origin.copy(testOrigin);
+            }
             let intersect0 = new THREE.Vector3();
             intersect0 = raycaster0.ray.intersectPlane(this._floorPlane_, intersect0);
             //
@@ -114,6 +141,10 @@ class BasicTerrainControls extends  WindowEventListener {
             mouse.x = ( clientX / this.viewer.domElement.clientWidth ) * 2 - 1;
             mouse.y = - ( clientY / this.viewer.domElement.clientHeight ) * 2 + 1;
             raycaster.setFromCamera( mouse, this.viewer.getCamera());
+            if(this.viewer.getCamera().isOrthographicCamera) {
+                let testOrigin = new THREE.Vector3(mouse.x, mouse.y, -1).unproject(this.viewer.getCamera());
+                raycaster.ray.origin.copy(testOrigin);
+            }
             let intersect1 = new THREE.Vector3();
             intersect1 = raycaster.ray.intersectPlane(this._floorPlane_, intersect1);
             //

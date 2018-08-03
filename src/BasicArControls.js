@@ -23,6 +23,8 @@ class BasicArControls extends  WindowEventListener {
         this.intersectionPos = null;
 
         this.lastArNode = null;
+        this.lastArLayer = null;
+        this.currentArLayer = null;
 
         this.oldMx = 0;
         this.oldMy = 0;
@@ -54,6 +56,11 @@ class BasicArControls extends  WindowEventListener {
         this.intersectionPos = intersects[0].point;
 
         this.geomRotateFlag.position.set(this.intersectionPos.x, this.intersectionPos.y, this.intersectionPos.z);
+        let scale = 3 *(this.geomRotateFlag.position.clone().dot(this.viewer.camera.pixelSizeVector)+ this.viewer.camera.pixelSizeVector.w);
+        scale = scale > 0 ? scale : -scale;
+        this.geomRotateFlag.scale.set(scale, scale, scale);
+        this.geomRotateFlag.updateMatrix();
+        //
         this.tempObj.add(this.geomRotateFlag);
         //
         this.viewer.scene.arLayers[0].removeImgNode();
@@ -152,13 +159,25 @@ class BasicArControls extends  WindowEventListener {
             tmpCamera.updateMatrixWorld(true);
         }
         //
-        let arNode = this.viewer.scene.arLayers[0].searchPhotoByNearest1(tmpCamera,this.intersectionPos);
-        if((!this.lastArNode && arNode) ||(arNode && this.lastArNode && arNode.index !== this.lastArNode.index)) {
-            this.viewer.scene.arLayers[0].removeImgNode();
+        let arNode = null;
+        for (let j = 0, len = this.viewer.scene.arLayers.length; j < len; ++j) {
+            if (!this.viewer.scene.arLayers[j].visible)
+                continue;
+            arNode = this.viewer.scene.arLayers[j].searchPhotoByNearest1(tmpCamera, this.intersectionPos);
+            if (arNode) {
+                this.currentArLayer = this.viewer.scene.arLayers[j];
+                break;
+            }
+        }
+        if ((!this.lastArNode && arNode) || (arNode && this.lastArNode && arNode.index !== this.lastArNode.index)) {
+            if (this.lastArLayer)
+                this.lastArLayer.removeImgNode();
             this.viewer.camera.copy(tmpCamera);
             this.lastArNode = arNode.clone();
-            this.viewer.scene.arLayers[0].applyArNode(this.viewer.camera, arNode, this.intersectionPos);
+            this.currentArLayer.applyArNode(this.viewer.camera, arNode, this.intersectionPos);
+            this.lastArLayer = this.currentArLayer;
         }
+
         //
         return true;
     }
@@ -170,13 +189,22 @@ class BasicArControls extends  WindowEventListener {
         this.tempObj.remove(this.geomRotateFlag);
         this.middleBtnDown = false;
         //
-        let arNode = this.viewer.scene.arLayers[0].searchPhotoByNearest1(this.viewer.camera, this.intersectionPos);
+        let arNode = null;
+        for (let j = 0, len = this.viewer.scene.arLayers.length; j < len; ++j) {
+            if (!this.viewer.scene.arLayers[j].visible)
+                continue;
+            arNode = this.viewer.scene.arLayers[j].searchPhotoByNearest1(this.viewer.camera, this.intersectionPos);
+            if (arNode) {
+                this.currentArLayer = this.viewer.scene.arLayers[j];
+                break;
+            }
+        }
         //
         //if((!this.lastArNode) || (arNode && this.lastArNode.index !== arNode.index)) {
         if (arNode){
             this.lastArNode = arNode.clone();
-            this.viewer.scene.arLayers[0].applyArNode(this.viewer.camera, arNode, this.viewer.scene.terrainLayers[0].rayIntersectTerrain(new THREE.Vector2(0, 0), this.viewer.camera).intersectP);
-        }
+            this.currentArLayer.applyArNode(this.viewer.camera, arNode, this.intersectionPos);
+            this.lastArLayer = this.currentArLayer;        }
         //}
 
         //this.viewer.camera.projectionMatrix.copy(arNode.projectionMatrix);
@@ -293,7 +321,7 @@ class BasicArControls extends  WindowEventListener {
         translate0.makeTranslation(-frustumCenter.x, -frustumCenter.y, -frustumCenter.z);
         let scale = new THREE.Matrix4();
 
-        let ratio = 1 + delta/(this.viewer.domElement.clientWidth + this.viewer.domElement.clientHeight);
+        let ratio = 1 - delta/(this.viewer.domElement.clientWidth + this.viewer.domElement.clientHeight);
         scale.makeScale(ratio, ratio, ratio);
         let translate1 = new THREE.Matrix4();
         translate1.makeTranslation(frustumCenter.x, frustumCenter.y, frustumCenter.z);
@@ -311,6 +339,8 @@ class BasicArControls extends  WindowEventListener {
         frustum.top = np_rt.y;
         //
         this.viewer.camera.projectionMatrix.makeFrustum(frustum.left, frustum.right, frustum.top, frustum.bottom, frustum.zNear, frustum.zFar);
+
+        return true;
     }
 }
 

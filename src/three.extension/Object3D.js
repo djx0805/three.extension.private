@@ -306,5 +306,18 @@ THREE.Object3D.prototype.updateMatrixWorld = function (force) {
     }
 };
 
+/**
+ * 释放函数
+ */
+THREE.Object3D.prototype.dispose = function (gpuRelease = true, memRelease = true) {
+    for(let n=0, length = this.children.length; n<length; n++) {
+        this.children[n].dispose(gpuRelease, memRelease);
+        if(memRelease)
+            this.children[n] = null;
+    }
+    if(memRelease)
+        this.children = [];
+};
+
 
 

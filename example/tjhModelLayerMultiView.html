@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>TJH  ar.js</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link rel="stylesheet" href="../node_modules/bootstrap/dist/css/bootstrap.min.css">
+		<style>
+			html,body{
+				height:100%;
+				width:100%;
+			}
+			body {
+				background:#000;
+				color:#fff;
+				padding:0;
+				margin:0;
+				font-weight: bold;
+				overflow:hidden;
+			}
+			#container{
+				height:100%;
+				width:100%;
+			}
+			#info {
+				position: absolute;
+				top: 0px; width: 100%;
+				color: #ffffff;
+				padding: 5px;
+				font-family: Monospace;
+				font-size: 13px;
+				text-align: center;
+				z-index:100;
+			}
+
+
+			a { color:red }
+			#fiew{
+				width:600px !important;
+				height:100% !important;
+			}
+			#fiew1{
+				width:600px !important;
+				height:100% !important;
+			}
+		</style>
+	</head>
+
+	<body>
+	    <div id="container" class="col-sm-12">
+
+			<canvas class="col-sm-6"  id="fiew"></canvas>
+			<canvas class="col-sm-6"  id="fiew1"></canvas>
+
+		</div>
+
+		<script src="../node_modules/three/build/three.js"></script>
+		<script src="../build/three.extension.js"></script>
+		<script src="../build/tjh.ar.js"></script>
+		<script src="../build/tjh.ar.tools.js"></script>
+		<script src="../node_modules/three/examples/js/Detector.js"></script>
+		<script src="../node_modules/three/examples/js/libs/stats.min.js"></script>
+		<script src="../node_modules/jquery/dist/jquery.min.js"></script>
+		<script src="../node_modules/bootstrap/dist/js/bootstrap.js"></script>
+		<script>
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var container, stats;
+
+			var camera0, camera1, scene, renderer0, renderer1;
+
+			var geometry, objects;
+
+			var controls0, controls1, clock = new THREE.Clock();
+            var fiew = document.getElementById('fiew');
+            var fiew1 = document.getElementById('fiew1');
+
+
+			var viewer0 = new tjh.ar.Viewer(fiew);
+			viewer0.active = false;
+			var viewer1 = new tjh.ar.Viewer(fiew1);
+			viewer1.active = true;
+			//
+            viewer0.onActivate = function (viewer) {
+                viewer1.active = false;
+            }
+
+            viewer1.onActivate = function (viewer) {
+				viewer0.active = false;
+            }
+
+
+			init();
+            viewer0.run();
+			viewer1.run();
+
+
+			function init() {
+                container = document.getElementById( 'container' );
+                document.body.appendChild( container );
+                //
+                scene = new tjh.ar.ARScene();
+                scene.fog = new THREE.Fog( 0x000000, 1, 15000 );
+                scene.autoUpdate = false;
+                var terrainLayer = new tjh.ar.TerrainLayer();
+                terrainLayer.dataBasePager.maxWaitingLoaded = 1;
+                terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=b47d9478-56f6-4d20-9dbb-93d05b624744");
+                scene.addTerrainLayer(terrainLayer);
+                //
+                var tjhModelLayer = new tjh.ar.TJHModelLayer("192.168.10.232", 1080, "b47d9478-56f6-4d20-9dbb-93d05b624111");
+                scene.addModelLayer(tjhModelLayer);
+                //
+                var ambientLight = new THREE.AmbientLight( 0xffffff );
+                scene.addLightSource( ambientLight );
+                //
+				viewer0.setScene(scene);
+				viewer1.setScene(scene);
+                //
+                camera0 = new THREE.OrthographicCamera(-viewer0.domElement.clientWidth/2, viewer0.domElement.clientWidth/2, viewer0.domElement.clientHeight/2, -viewer0.domElement.clientHeight/2, 1, 1500000);
+                camera0.position.set(-1274.28,-425.81,2000);
+                camera0.lookAt(new THREE.Vector3(-1274.28,-425.81, 52));
+                //scene.add(camera0);
+                viewer0.setCamera(camera0);
+
+                let defaultRenderTechnique0 = new tjh.ar.RenderTechnique(viewer0.getRenderer());
+                let defaultRenderPass0 = new tjh.ar.NormalRenderPass(scene, camera0);
+                defaultRenderTechnique0.addRenderPass(defaultRenderPass0);
+                viewer0.pushRenderTechnique(defaultRenderTechnique0);
+
+
+                camera1 = new THREE.PerspectiveCamera( 45, viewer1.domElement.clientWidth / viewer1.domElement.clientHeight, 1, 1500000 );
+                camera1.position.set(-1274.28,-425.81,2000);
+                camera1.lookAt(new THREE.Vector3(-1274.28,-425.81, 52));
+                //scene.add(camera1);
+                viewer1.setCamera(camera1);
+
+                let defaultRenderTechnique1 = new tjh.ar.RenderTechnique(viewer1.getRenderer());
+                let defaultRenderPass1 = new tjh.ar.NormalRenderPass(scene, camera1);
+                defaultRenderTechnique1.addRenderPass(defaultRenderPass1);
+                viewer1.pushRenderTechnique(defaultRenderTechnique1);
+                //
+                controls0 = new tjh.ar.BasicTerrainControls(viewer0);
+                viewer0.pushEventListenerFront(controls0);
+                //
+                controls1 = new tjh.ar.BasicTerrainControls(viewer1);
+                viewer1.pushEventListenerFront(controls1);
+			}
+		</script>
+
+	</body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>TJH  ar.js</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background:#000;
+				color:#fff;
+				padding:0;
+				margin:0;
+				font-weight: bold;
+				overflow:hidden;
+			}
+
+			#info {
+				position: absolute;
+				top: 0px; width: 100%;
+				color: #ffffff;
+				padding: 5px;
+				font-family: Monospace;
+				font-size: 13px;
+				text-align: center;
+				z-index:100;
+			}
+
+			a { color:red }
+
+		</style>
+	</head>
+
+	<body>
+	    <div id="container"></div>
+		<div id="info">
+			<a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - level-of-details WebGL example
+		</div>
+
+
+		<script src="../node_modules/three/build/three.js"></script>
+		<script src="../build/three.extension.js"></script>
+		<script src="../build/three.loader.js"></script>
+		<script src="../build/tjh.ar.js"></script>
+		<script src="../build/tjh.ar.tools.js"></script>
+		<script src="../node_modules/three/examples/js/Detector.js"></script>
+		<script src="../node_modules/three/examples/js/libs/stats.min.js"></script>
+		<script src="../node_modules/jquery/dist/jquery.min.js"></script>
+		<script src="../node_modules/jsts/dist/jsts.js"></script>
+		<script>
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var container, stats;
+
+			var camera, scene, renderer;
+
+			var geometry, objects;
+
+			var controls, clock = new THREE.Clock();
+
+			var viewer = new tjh.ar.Viewer();
+            viewer.onEndFrame = ()=> {
+                stats.update();
+            }
+
+			init();
+			viewer.setBeginFrameCallBack(function () {
+				//controls.update();
+            })
+			viewer.run();
+
+			function init() {
+				container = document.getElementById( 'container' );
+				document.body.appendChild( container );
+
+                renderer = viewer.getRenderer();
+                renderer.setPixelRatio( window.devicePixelRatio );
+                renderer.setSize( window.innerWidth, window.innerHeight );
+                container.appendChild( renderer.domElement );
+                //
+				camera = viewer.camera;
+                //
+                camera.position.set(538835-100,3370701-100,2000);
+                camera.lookAt(new THREE.Vector3(538835-100,3370701-100,65));
+
+				controls = new tjh.ar.BasicArControls(viewer);
+				viewer.pushEventListenerFront(controls);
+
+				scene = viewer.getScene();
+				scene.fog = new THREE.Fog( 0x000000, 1, 15000 );
+
+				var light = new THREE.DirectionalLight( 0xffffff );
+				light.position.set( 0, 0, 1 ).normalize();
+				scene.addLightSource( light );
+
+				var terrainLayer = new tjh.ar.TerrainLayer();
+				terrainLayer.dataBasePager.maxWaitingLoaded = 1;
+                terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=48d0fdfe-bbdd-4d26-bbcc-13012bd7df25");
+                //terrainLayer.addTerrain("0889a58e-51c4-4444-b515-cc17dabcece8/8/8.osgjs");
+				scene.addTerrainLayer(terrainLayer);
+                //
+                var arLayer = new tjh.ar.ARLayer("http://192.168.10.232:8018/", "ae4021b3-663b-4843-9145-e39492327024", terrainLayer, "http://192.168.10.178:9090");
+                scene.addARLayer(arLayer);
+                //
+				//var ftLayer = new tjh.ar.FeatureLayer("http://192.168.10.30:8888/geoserver/tjh/ows?service=WFS&version=1.0.0&typeName=tjh:test", []);
+				//scene.addFeatureLayer(ftLayer);
+                //let defaultRenderTechnique = new tjh.ar.RenderTechnique(renderer);
+                //let defaultRenderPass = new tjh.ar.NormalRenderPass(scene, camera);
+                //defaultRenderTechnique.addRenderPass(defaultRenderPass);
+                //viewer.pushRenderTechnique(defaultRenderTechnique);
+
+                let defaultRenderTechnique = new tjh.ar.OutLineTechnique(renderer, scene, camera);
+                viewer.pushRenderTechnique(defaultRenderTechnique);
+                //
+                stats = new Stats();
+                container.appendChild( stats.dom );
+			}
+		</script>
+
+	</body>
+</html>

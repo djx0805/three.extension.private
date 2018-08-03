@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>TJH  ar.js</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+        body {
+            background:#000;
+            color:#fff;
+            padding:0;
+            margin:0;
+            font-weight: bold;
+            overflow:hidden;
+        }
+
+        #info {
+            position: absolute;
+            top: 0px; width: 100%;
+            color: #ffffff;
+            padding: 5px;
+            font-family: Monospace;
+            font-size: 13px;
+            text-align: center;
+            z-index:100;
+        }
+
+        a { color:red }
+
+    </style>
+</head>
+
+<body>
+<div id="container"></div>
+<div id="info">
+    <a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - level-of-details WebGL example
+</div>
+
+
+<script src="../build/three.js"></script>
+<script src="../build/three.extension.js"></script>
+<script src="../build/tjh.ar.js"></script>
+<script src="../build/tjh.ar.tools.js"></script>
+<script src="../build/extension/facadeAnalyzer.js"></script>
+<script src="../node_modules/three/examples/js/Detector.js"></script>
+<script src="../node_modules/three/examples/js/libs/stats.min.js"></script>
+<script src="../node_modules/jquery/dist/jquery.min.js"></script>
+<script src="../node_modules/jsts/dist/jsts.js"></script>
+<script>
+
+    if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+    var container, stats;
+
+    var camera, scene, renderer;
+
+    var geometry, objects;
+
+    var controls,basicControls, clock = new THREE.Clock();
+
+    var viewer = new tjh.ar.Viewer();
+
+    init();
+    viewer.setBeginFrameCallBack(function () {
+        //controls.update();
+    })
+    viewer.run();
+
+    function init() {
+
+        container = document.getElementById( 'container' );
+        document.body.appendChild( container );
+
+
+        scene = new tjh.ar.ARScene();
+        scene.fog = new THREE.Fog( 0x000000, 1, 15000 );
+        scene.autoUpdate = false;
+        viewer.setScene(scene);
+        //
+        renderer = new THREE.WebGLRenderer();
+        renderer.setPixelRatio( window.devicePixelRatio );
+        renderer.setSize( window.innerWidth, window.innerHeight );
+        container.appendChild( renderer.domElement );
+        viewer.setRenderer(renderer);
+        //
+        camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 1500000 );
+        //camera = new THREE.OrthographicCamera(-window.innerWidth/2, window.innerWidth/2, window.innerHeight/2, -window.innerHeight/2, 1, 1500000)
+        viewer.setCamera(camera);
+        //
+        camera.position.set(-1274.28,-425.81,2000);
+        camera.lookAt(new THREE.Vector3(-1274.28,-425.81, 52));
+
+        //controls.target = new THREE.Vector3(-618, 510, 31.14);
+        //controls.update();
+
+        controls = new tjh.ar.BasicTerrainControls(viewer);
+        viewer.pushEventListenerFront(controls);
+
+
+
+        var ambientLight = new THREE.AmbientLight( 0xffffff );
+        scene.addLightSource( ambientLight );
+
+        var light = new THREE.DirectionalLight( 0xffffff );
+        light.position.set( 0, 0, 1 ).normalize();
+        scene.addLightSource( light );
+
+        var terrainLayer = new tjh.ar.TerrainLayer();
+        terrainLayer.dataBasePager.maxWaitingLoaded = 1;
+        terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=b47d9478-56f6-4d20-9dbb-93d05b624744");
+
+
+        scene.addTerrainLayer(terrainLayer);
+
+
+        class OperateTool extends tjh.ar.WindowEventListener {
+            constructor(viewer) {
+                super(viewer);
+                //
+                this.onKeyDown = (keyboardEvent)=> {
+                    if((keyboardEvent.keyCode === 68)) {
+                        if (!basicControls) {
+                            basicControls = new FacadeAnalyzer(viewer, terrainLayer);
+                            //controls = new tjh.ar.BasicTerrainControls(viewer);
+                            viewer.pushEventListenerFront(basicControls);
+                            return true;
+                        }
+                        else {
+                            viewer.removeEventListenerFront();
+                            basicControls = null;
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        let ot = new OperateTool(viewer)
+        viewer.pushEventListenerBack(ot);
+
+        //
+        let defaultRenderTechnique = new tjh.ar.RenderTechnique(renderer, scene, viewer.getCamera());
+        let defaultRenderPass = new tjh.ar.NormalRenderPass(scene, viewer.getCamera(), defaultRenderTechnique.screenRT);
+        defaultRenderTechnique.addRenderPass(defaultRenderPass);
+        viewer.pushRenderTechnique(defaultRenderTechnique);
+    }
+</script>
+
+</body>
+</html>

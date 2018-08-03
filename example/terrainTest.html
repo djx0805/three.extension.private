@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>TJH  ar.js</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background:#000;
+				color:#fff;
+				padding:0;
+				margin:0;
+				font-weight: bold;
+				overflow:hidden;
+			}
+
+			#info {
+				position: absolute;
+				top: 0px; width: 100%;
+				color: #ffffff;
+				padding: 5px;
+				font-family: Monospace;
+				font-size: 13px;
+				text-align: center;
+				z-index:100;
+			}
+
+			a { color:red }
+
+		</style>
+	</head>
+
+	<body>
+	    <div id="container"></div>
+
+		<script src="../node_modules/three/build/three.js"></script>
+		<script src="../build/three.extension.js"></script>
+		<script src="../build/tjh.ar.js"></script>
+		<script src="../node_modules/three/examples/js/Detector.js"></script>
+		<script src="../node_modules/three/examples/js/libs/stats.min.js"></script>
+		<script src="../node_modules/jquery/dist/jquery.min.js"></script>
+		<script>
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var container, stats;
+
+			var camera, scene, renderer;
+
+			var geometry, objects;
+
+			var controls, clock = new THREE.Clock();
+
+			var viewer = new tjh.ar.Viewer();
+			viewer.onEndFrame = ()=> {
+			    stats.update();
+			}
+
+			init();
+			viewer.setBeginFrameCallBack(function () {
+				//controls.update();
+            })
+			viewer.run();
+
+			function init() {
+
+				container = document.getElementById( 'container' );
+				document.body.appendChild( container );
+
+                renderer = new THREE.WebGLRenderer();
+                renderer.setPixelRatio( window.devicePixelRatio );
+                renderer.setSize( window.innerWidth, window.innerHeight );
+                container.appendChild( renderer.domElement );
+                viewer.setRenderer(renderer);
+                //
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 1500000 );
+				viewer.setCamera(camera);
+                //
+				//controls = new THREE.TrackballControls( this.camera, this.renderer.domElement );
+				//
+                //camera.position.set(-618,510,2000);
+                //camera.lookAt(new THREE.Vector3(-618, 510, 31.14));
+
+                camera.position.set(-618 + 516006,510 + 3348054,2000);
+                camera.lookAt(new THREE.Vector3(-618 + 516006, 510 + 3348054, 31.14));
+
+                //controls.target = new THREE.Vector3(-618, 510, 31.14);
+                //controls.update();
+				controls = new tjh.ar.BasicTerrainControls(viewer);
+				viewer.pushEventListenerFront(controls);
+
+				scene = new tjh.ar.ARScene();
+				scene.fog = new THREE.Fog( 0x000000, 1, 15000 );
+				scene.autoUpdate = false;
+				viewer.setScene(scene);
+
+				var light = new THREE.PointLight( 0xff2200 );
+				light.position.set( 0, 0, 0 );
+				scene.addLightSource( light );
+
+				var light = new THREE.DirectionalLight( 0xffffff );
+				light.position.set( 0, 0, 1 ).normalize();
+				scene.addLightSource( light );
+
+				var terrainLayer = new tjh.ar.TerrainLayer();
+				terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=c32ddf6c-2476-4ac9-b24f-9e01c263329e");
+
+                //terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=44d36b01-25d6-45b9-81b9-1bf755877248");
+                //terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=e3412e05-37e3-4256-b3aa-4ee9e0c3ae48");
+
+
+				/*var pagedLod0 = new THREE.PagedLod();
+				pagedLod0.addLevel("root.osgjs", 0, 100000);
+				pagedLod0.setRangeMode(THREE.LOD.RangeMode.PIXEL_SIZE_ON_SCREEN);
+				pagedLod0.boundingSphere = new THREE.Sphere(new THREE.Vector3(-618, 510, 31.14), 522);
+                scene.add( pagedLod0 );*/
+				scene.addTerrainLayer(terrainLayer);
+				//
+                let defaultRenderTechnique = new tjh.ar.OutLineTechnique(renderer, scene, camera);
+                viewer.pushRenderTechnique(defaultRenderTechnique);
+                //
+                stats = new Stats();
+                container.appendChild( stats.dom );
+			}
+		</script>
+
+	</body>
+</html>

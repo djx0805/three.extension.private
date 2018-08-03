@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>TJH  ar.js</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+        body {
+            background:#000;
+            color:#fff;
+            padding:0;
+            margin:0;
+            font-weight: bold;
+            overflow:hidden;
+        }
+
+        #info {
+            position: absolute;
+            top: 0px; width: 100%;
+            color: #ffffff;
+            padding: 5px;
+            font-family: Monospace;
+            font-size: 13px;
+            text-align: center;
+            z-index:100;
+        }
+
+        a { color:red }
+
+    </style>
+</head>
+
+<body>
+<div id="container"></div>
+<div id="info">
+    <a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - level-of-details WebGL example
+</div>
+
+
+<script src="../build/three.js"></script>
+<script src="../build/three.extension.js"></script>
+<script src="../build/tjh.util.js"></script>
+<script src="../build/tjh.ar.js"></script>
+<script src="../build/tjh.ar.tools.js"></script>
+<script src="../build/extension/jsts.min.js"></script>
+<script src="../build/extension/tjh.ar.drawTools.js"></script>
+<script src="../build/extension/tjh.ar.measureTools.js"></script>
+<script src="../node_modules/three/examples/js/Detector.js"></script>
+<script src="../node_modules/three/examples/js/libs/stats.min.js"></script>
+<script src="../node_modules/jquery/dist/jquery.min.js"></script>
+<script>
+
+    if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+    var container, stats;
+
+    var camera, scene, renderer;
+
+    var geometry, objects;
+
+    var controls, clock = new THREE.Clock();
+
+    var viewer = new tjh.ar.Viewer();
+
+    init();
+    viewer.setBeginFrameCallBack(function () {
+        //controls.update();
+    })
+    viewer.run();
+
+    function init() {
+
+        container = document.getElementById( 'container' );
+        document.body.appendChild( container );
+
+
+        scene = new tjh.ar.ARScene();
+        scene.fog = new THREE.Fog( 0x000000, 1, 15000 );
+        scene.autoUpdate = false;
+        viewer.setScene(scene);
+        //
+        renderer = new THREE.WebGLRenderer();
+        renderer.setPixelRatio( window.devicePixelRatio );
+        renderer.setSize( window.innerWidth, window.innerHeight );
+        container.appendChild( renderer.domElement );
+        viewer.setRenderer(renderer);
+        //
+        camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 1500000 );
+        viewer.setCamera(camera);
+        //
+        camera.position.set(-618 + 516006,510 + 3348054,2000);
+        camera.lookAt(new THREE.Vector3(-618 + 516006, 510 + 3348054, 31.14));
+
+        scene.globalOffset[0] = 516006;
+        scene.globalOffset[1] = 3348054;
+        scene.globalOffset[2] = 0;
+
+        //controls.target = new THREE.Vector3(-618, 510, 31.14);
+        //controls.update();
+        controls = new tjh.ar.BasicTerrainControls(viewer);
+        viewer.pushEventListenerFront(controls);
+
+
+        var ambientLight = new THREE.AmbientLight( 0xffffff );
+        scene.addLightSource( ambientLight );
+
+        var light = new THREE.DirectionalLight( 0xffffff );
+        light.position.set( 0, 0, 1 ).normalize();
+        scene.addLightSource( light );
+
+        var terrainLayer = new tjh.ar.TerrainLayer();
+        terrainLayer.dataBasePager.maxWaitingLoaded = 1;
+        //terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=c32ddf6c-2476-4ac9-b24f-9e01c263329e");
+        terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=44d36b01-25d6-45b9-81b9-1bf755877248");
+
+
+        scene.addTerrainLayer(terrainLayer);
+
+
+        var modelLayer = new tjh.ar.ModelLayer();
+        scene.addModelLayer(modelLayer);
+
+
+
+
+       var measureTool = new MeasureTools(viewer, terrainLayer, scene.globalOffset);
+
+        measureTool.drawOptions.color = new THREE.Color(0xffff00);
+        measureTool.drawOptions.opacity = 0.8;
+        measureTool.measureMode = MeasureTools.MEASURE_MODE.MEASURE_EARTH_SURFACE;
+
+        measureTool.labelControler.color = new THREE.Color(0xff0000);
+        measureTool.labelControler.opacity = 0.6;
+        measureTool.labelControler.fontSize = 5;
+        measureTool.initMaterial();
+        viewer.pushEventListenerFront(measureTool);
+
+        //
+        let defaultRenderTechnique = new tjh.ar.RenderTechnique(renderer, scene, camera);
+        let defaultRenderPass = new tjh.ar.NormalRenderPass(scene, camera, defaultRenderTechnique.screenRT);
+        defaultRenderTechnique.addRenderPass(defaultRenderPass);
+        viewer.pushRenderTechnique(defaultRenderTechnique);
+    }
+</script>
+
+</body>
+</html>

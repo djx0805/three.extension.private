@@ -329,18 +329,32 @@ let osgjsParseToProxy = (json, node, stateSets, textures, vertexes, baseServerUr
             osgjsParseToProxy(json["osg.PagedLOD"], pagedLod, stateSets, textures, vertexes, baseServerUrl);
             let rangeList = json["osg.PagedLOD"].RangeList;
             let fileList = json["osg.PagedLOD"].RangeDataList;
+            //
+            let validFiles = [];
+            //
             for(let n=0; n<Object.getOwnPropertyNames(rangeList).length; n++) {
                 if(fileList["File "+n].trim().length === 0) {
                     pagedLod.levels.push({url:"", min:rangeList["Range "+n][0], max:rangeList["Range "+n][1]})
                 }
                 else {
                     let corUrl = baseServerUrl.length > 2 ? baseServerUrl + encodeURIComponent(fileList["File "+n]) : fileList["File "+n]; // encodeURIComponent
-                    pagedLod.levels.push({url:corUrl, min:rangeList["Range "+n][0], max:rangeList["Range "+n][1]})
+                    if(pagedLod.name === "IndexNode" && validFiles.indexOf(corUrl) >= 0) {
+                        console.log("repeat range : " + corUrl);
+                    }
+                    else {
+                        pagedLod.levels.push({url:corUrl, min:rangeList["Range "+n][0], max:rangeList["Range "+n][1]});
+                        if(pagedLod.name === "IndexNode") {
+                            validFiles[validFiles.length] = corUrl;
+                        }
+                    }
                 }
             }
             pagedLod.boundingSphere = [json["osg.PagedLOD"].UserCenter[0],
                 json["osg.PagedLOD"].UserCenter[1],
                 json["osg.PagedLOD"].UserCenter[2], json["osg.PagedLOD"].UserCenter[3]];
+            if(pagedLod.boundingSphere && pagedLod.boundingSphere[3] < 0) {
+                pagedLod.boundingSphere = [];
+            }
             if(json["osg.PagedLOD"].RangeMode === "DISTANCE_FROM_EYE_POINT") {
                 pagedLod.rangeMode = 0;
             }

@@ -65,15 +65,3 @@ THREE.Group.prototype.raycast = function (raycaster, intersects) {
     }
 };
 
-/**
- * 释放函数
- */
-THREE.Group.prototype.dispose = function (gpuRelease = true, memRelease = true) {
-    for(let n=0, length = this.children.length; n<length; n++) {
-        this.children[n].dispose(gpuRelease, memRelease);
-        if(memRelease)
-          this.children[n] = null;
-    }
-    if(memRelease)
-      this.children = [];
-};

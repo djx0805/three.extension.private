@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>TJH  ar.js</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background:#000;
+				color:#fff;
+				padding:0;
+				margin:0;
+				font-weight: bold;
+				overflow:hidden;
+			}
+
+			#c{
+				width:100vw;
+				height:100vh;
+				display: block;
+			}
+
+			a { color:red }
+
+		</style>
+	</head>
+
+	<body>
+	    <div id="container">
+			<canvas id="c"></canvas>
+		</div>
+
+
+		<script src="../node_modules/three/build/three.js"></script>
+		<script src="../build/three.extension.js"></script>
+		<script src="../build/three.loader.js"></script>
+		<script src="../build/tjh.ar.js"></script>
+		<script src="../build/tjh.ar.tools.js"></script>
+		<script src="../node_modules/three/examples/js/Detector.js"></script>
+		<script src="../node_modules/three/examples/js/libs/stats.min.js"></script>
+		<script src="../node_modules/jquery/dist/jquery.min.js"></script>
+		<script>
+
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+			var container, stats;
+
+			var camera, scene, renderer;
+
+			var geometry, objects;
+
+			var controls, clock = new THREE.Clock();
+
+			var viewer = new tjh.ar.Viewer(document.getElementById('c'));
+            viewer.onEndFrame = ()=> {
+                stats.update();
+            }
+			init();
+			viewer.setBeginFrameCallBack(function () {
+				//controls.update();
+            })
+			viewer.run();
+
+			function init() {
+				container = document.getElementById( 'container' );
+				document.body.appendChild( container );
+
+                renderer = viewer.getRenderer();
+                //
+				camera = viewer.camera;
+                //
+                camera.position.set(-100,-100,2000);
+                camera.lookAt(new THREE.Vector3(-100,-100,65));
+
+				controls = new tjh.ar.BasicTerrainControls(viewer);
+				viewer.pushEventListenerFront(controls);
+
+				scene = viewer.getScene();
+				scene.fog = new THREE.Fog( 0x000000, 1, 15000 );
+				scene.autoUpdate = false;
+				scene.globalOffset = [538835, 3370701, 0];
+
+				var light = new THREE.PointLight( 0xff2200 );
+				light.position.set( 0, 0, 0 );
+				scene.addLightSource( light );
+
+				var light = new THREE.DirectionalLight( 0xffffff );
+				light.position.set( 0, 0, 1 ).normalize();
+				scene.addLightSource( light );
+
+				var terrainLayer = new tjh.ar.TerrainLayer();
+                terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=0889a58e-51c4-4444-b515-cc17dabcece8");
+                //terrainLayer.addTerrain("48d0fdfe-bbdd-4d26-bbcc-13012bd7df25/8/8_L0_0.osgjs");
+				scene.addTerrainLayer(terrainLayer);
+				//
+                var ftLayer = new tjh.ar.FeatureLayer("http://192.168.10.9:8080/geoserver/tjh/ows?service=WFS&version=1.0.0&typeName=tjh:hy_dwg_Annotation","",false, scene.terrainLayers, scene.globalOffset);
+                ftLayer.regulator.color.set(0xff0000);
+                var ftLayer1 = new tjh.ar.FeatureLayer("http://192.168.10.9:8080/geoserver/tjh/ows?service=WFS&version=1.0.0&typeName=tjh:hy_dwg_Point", "",false, scene.terrainLayers, scene.globalOffset);
+                ftLayer1.regulator.color.set(0x00ff00);
+                var ftLayer2 = new tjh.ar.FeatureLayer("http://192.168.10.9:8080/geoserver/tjh/ows?service=WFS&version=1.0.0&typeName=tjh:hy_dwg_Polygon","",false, scene.terrainLayers, scene.globalOffset);
+                ftLayer2.regulator.color.set(0xffff00);
+                var ftLayer3 = new tjh.ar.FeatureLayer("http://192.168.10.9:8080/geoserver/tjh/ows?service=WFS&version=1.0.0&typeName=tjh:hy_dwg_Polyline","",false, scene.terrainLayers, scene.globalOffset);
+                ftLayer3.regulator.color.set(0x0000ff);
+
+                ftLayer1.regulator.fitPattern = tjh.ar.FeatureLayer.FIT_PATTERN.USE_SOURCED_DATA;
+                ftLayer2.regulator.fitPattern = tjh.ar.FeatureLayer.FIT_PATTERN.ASSIGN_PROP;
+                ftLayer2.regulator.setHighValue("[Elevation]");
+                ftLayer3.regulator.fitPattern = tjh.ar.FeatureLayer.FIT_PATTERN.USE_SOURCED_DATA;
+
+                ftLayer1.initMaterial();
+
+                ftLayer2.initMaterial();
+
+                ftLayer3.initMaterial();
+
+                // var ftLayer = new tjh.ar.FeatureLayer("http://192.168.10.30:8888/geoserver/tjh/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=tjh:fwsl&maxFeatures=1000&outputFormat=application%2Fjson", [], scene.globalOffset);
+                // .addFeatureLayer(ftLayer);
+                scene.addFeatureLayer(ftLayer1);
+                scene.addFeatureLayer(ftLayer2);
+                scene.addFeatureLayer(ftLayer3);
+                //
+				//var ftLayer = new tjh.ar.FeatureLayer("http://192.168.10.30:8888/geoserver/tjh/ows?service=WFS&version=1.0.0&typeName=tjh:test", []);
+				//scene.addFeatureLayer(ftLayer);
+                //let defaultRenderTechnique = new tjh.ar.RenderTechnique(renderer);
+                //let defaultRenderPass = new tjh.ar.NormalRenderPass(scene, camera);
+                //defaultRenderTechnique.addRenderPass(defaultRenderPass);
+                //viewer.pushRenderTechnique(defaultRenderTechnique);
+
+                let defaultRenderTechnique = new tjh.ar.OutLineTechnique(renderer, scene, camera);
+                viewer.pushRenderTechnique(defaultRenderTechnique);
+                //
+                var selectTool = null;
+                //
+                class SelectEvent extends tjh.ar.WindowEventListener {
+                    constructor(viewer) {
+                        super(viewer);
+                        //
+                        this.onKeyDown = (keyboardEvent)=> {
+                            if((keyboardEvent.keyCode === 115 || keyboardEvent.keyCode === 83)) {
+                                if (!selectTool) {
+                                    selectTool = new tjh.ar.tools.PointSelectTool(viewer, camera, true, scene.featureLayers);
+                                    viewer.pushEventListenerFront(selectTool);
+                                    return true;
+                                }
+                                else {
+                                    viewer.removeEventListenerFront();
+                                    selectTool = null;
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+                viewer.pushEventListenerFront(new SelectEvent(viewer));
+				//
+                stats = new Stats();
+                container.appendChild( stats.dom );
+			}
+		</script>
+
+	</body>
+</html>

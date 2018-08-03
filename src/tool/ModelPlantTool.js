@@ -213,6 +213,13 @@ class ModelPlantTool extends ToolBase {
             //
             return false;
         }
+        //
+        this.release = function () {
+            if(this.viewer.getFrontEventListener() === this.modelTransformTool) {
+                this.viewer.removeEventListenerFront();
+                this.modelTransformTool.detach();
+            }
+        }
     }
 
     /**

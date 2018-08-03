@@ -101,14 +101,14 @@ THREE.PagedLod.prototype.update = function (context, visibleMesh) {
     }
     //
     let dis = 0;
-    if(this.getRangeMode() === THREE.LOD.RangeMode.DISTANCE_FROM_EYE_POINT) {
+    let rangeMode = this.getRangeMode();
+    if(rangeMode === THREE.LOD.RangeMode.DISTANCE_FROM_EYE_POINT) {
         const v1 = new THREE.Vector3();
-        const v2 = new THREE.Vector3();
+        const v2 = bs.center.clone();
         v1.setFromMatrixPosition( camera.matrixWorld );
-        v2.setFromMatrixPosition( this.matrixWorld );
         dis = v1.distanceTo( v2 );
     }
-    else if(this.getRangeMode() === THREE.LOD.RangeMode.PIXEL_SIZE_ON_SCREEN) {
+    else if(rangeMode === THREE.LOD.RangeMode.PIXEL_SIZE_ON_SCREEN) {
         dis = Math.abs(bs.radius/(bs.center.dot(camera.pixelSizeVector) + camera.pixelSizeVector.w));
         //
         dis*=this.dataBasePager.pageScaleFunc(context, this);
@@ -119,7 +119,7 @@ THREE.PagedLod.prototype.update = function (context, visibleMesh) {
     let lastValidLevel = -1;
     let useLastValidLevel = false;
     for(let i=0, length = this.levels.length; i< length; targetLevel = i, i++) {
-        if(dis > this.levels[i].sps[1]) {
+        if(rangeMode === THREE.LOD.RangeMode.PIXEL_SIZE_ON_SCREEN ? dis > this.levels[i].sps[1] : dis <= this.levels[i].sps[0]) {
             this.levels[i].lastVisitFrame = 0;
             //
             if(i<this.children.length) {
@@ -208,7 +208,7 @@ THREE.PagedLod.prototype.update = function (context, visibleMesh) {
                 this.loadChild(this.levels[i].url, context.numFrame, dis);
                 //
                 if(i>0) {
-                    if(this.levels[i].sps[0] >= this.levels[i - 1].sps[1]) {
+                    if(rangeMode === THREE.LOD.RangeMode.PIXEL_SIZE_ON_SCREEN ? this.levels[i].sps[0] >= this.levels[i - 1].sps[1] : this.levels[i].sps[1] <= this.levels[i - 1].sps[0]) {
                         visibleObj[visibleObj.length] = {obj:this.children[i-1], level:i- 1, needUpdate:false};
                     }
                     else
@@ -234,7 +234,7 @@ THREE.PagedLod.prototype.update = function (context, visibleMesh) {
                     }
                     //
                     if(i>0) {
-                        if(this.levels[i].sps[0] >= this.levels[i - 1].sps[1]) {
+                        if(rangeMode === THREE.LOD.RangeMode.PIXEL_SIZE_ON_SCREEN ? this.levels[i].sps[0] >= this.levels[i - 1].sps[1] : this.levels[i].sps[1] <= this.levels[i - 1].sps[0]) {
                             visibleObj[visibleObj.length] = {obj:this.children[i-1], level:i- 1, needUpdate:false};
                         }
                         else
@@ -245,7 +245,7 @@ THREE.PagedLod.prototype.update = function (context, visibleMesh) {
                 else if(this.dataBasePager.parsedNodeCache.has(this.levels[i].url)) {
                     let afterFailed = ()=> {
                         if(i>0) {
-                            if(this.levels[i].sps[0] >= this.levels[i - 1].sps[1]) {
+                            if(rangeMode === THREE.LOD.RangeMode.PIXEL_SIZE_ON_SCREEN ? this.levels[i].sps[0] >= this.levels[i - 1].sps[1] : this.levels[i].sps[1] <= this.levels[i - 1].sps[0]) {
                                 visibleObj[visibleObj.length] = {obj:this.children[i-1], level:i- 1, needUpdate:false};
                             }
                             else
@@ -305,7 +305,7 @@ THREE.PagedLod.prototype.update = function (context, visibleMesh) {
                     this.loadChild(this.levels[i].url, context.numFrame, dis);
                     //
                     if(i>0) {
-                        if(this.levels[i].sps[0] >= this.levels[i - 1].sps[1]) {
+                        if(rangeMode === THREE.LOD.RangeMode.PIXEL_SIZE_ON_SCREEN ? this.levels[i].sps[0] >= this.levels[i - 1].sps[1] : this.levels[i].sps[1] <= this.levels[i - 1].sps[0]) {
                             visibleObj[visibleObj.length] = {obj:this.children[i-1], level:i- 1, needUpdate:false};
                         }
                         else
@@ -355,7 +355,9 @@ THREE.PagedLod.prototype.update = function (context, visibleMesh) {
                     //visibleObj[n].obj.update(context, visibleMesh);
                 }
                 else {
-                    visibleMesh[visibleMesh.length] = visibleObj[n].obj;
+                    if(visibleMesh) {
+                        visibleMesh[visibleMesh.length] = visibleObj[n].obj;
+                    }
                 }
             }
             else {
@@ -373,7 +375,9 @@ THREE.PagedLod.prototype.update = function (context, visibleMesh) {
                     //visibleObj[n].obj.update(context, visibleMesh);
                 }
                 else {
-                    visibleMesh[visibleMesh.length] = visibleObj[n].obj;
+                    if(visibleMesh) {
+                        visibleMesh[visibleMesh.length] = visibleObj[n].obj;
+                    }
                 }
             }
             else {

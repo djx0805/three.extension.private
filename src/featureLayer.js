@@ -28,6 +28,9 @@ class FeatureLayer extends  THREE.Group{
          * 适量贴合模式
          * @enum {number}
          */
+
+        this.loadAllOnce = false;
+        //
         FeatureLayer.FIT_PATTERN = {
             /** @description 贴合地形周围低值*/
             FIT_TERRIAN_LOW: 0,
@@ -264,6 +267,11 @@ class FeatureLayer extends  THREE.Group{
              * @type {number}
              */
             fontDivisions : 2,
+            /**
+             * 标注字体 font
+             * @type {number}
+             */
+            fontName : "msyh",
         }
 
 
@@ -407,6 +415,7 @@ class FeatureLayer extends  THREE.Group{
          * @description 初始化矢量的材质，同时每次改变矢量调节器的参数，也应该调用该函数
          */
         this.initMaterial = function () {
+            THREE.FontManager.getFont(this.labelControler.fontName);
             if(this.regulator.fitPattern === FeatureLayer.FIT_PATTERN.FIT_TERRIAN_HIGH || this.regulator.fitPattern === FeatureLayer.FIT_PATTERN.FIT_TERRIAN_LOW
                 || this.regulator.fitPattern === FeatureLayer.FIT_PATTERN.FIT_TERRIAN_NORMAL){
                 if(featureLayer.featureType === "gml:MultiPoint" || featureLayer.featureType === "gml:Point")
@@ -415,15 +424,21 @@ class FeatureLayer extends  THREE.Group{
                     this.pointMaterial.uniforms["diffuse"].value =  this.regulator.color;
                     this.pointMaterial.uniforms["opacity"].value = this.regulator.opacity;
                     this.pointMaterial.uniforms["size"].value = this.regulator.size;
+                    this.pointMaterial.polygonOffset = true;
+                    this.pointMaterial.polygonOffsetFactor = -10;
+                    this.pointMaterial.polygonOffsetUnits = -10;
                     this.pointMaterial.transparent = true;
                 }
 
                 if(featureLayer.featureType === "gml:MultiLineString" || featureLayer.featureType === "gml:LineString")
                 {
                     this.lineMaterial = fitTerrainMaterialGen.getLineMaterial(this.regulator.fitPattern);
-                    this.lineMaterial.uniforms["diffuse"].value =  this.regulator.color;
+                    this.lineMaterial.color =  this.regulator.color;
                     this.lineMaterial.uniforms["opacity"].value = this.regulator.opacity;
-                    this.lineMaterial.uniforms["size"].value = this.regulator.size;
+                    this.lineMaterial.uniforms["linewidth"].value = this.regulator.size;
+                    this.lineMaterial.polygonOffset = true;
+                    this.lineMaterial.polygonOffsetFactor = -10;
+                    this.lineMaterial.polygonOffsetUnits = -10;
                     this.lineMaterial.transparent = true;
                 }
 
@@ -434,6 +449,9 @@ class FeatureLayer extends  THREE.Group{
                     this.polygonMaterial.uniforms["diffuse"].value =  this.regulator.color;
                     this.polygonMaterial.uniforms["opacity"].value = this.regulator.opacity;
                     this.polygonMaterial.uniforms["size"].value = this.regulator.size;
+                    this.polygonMaterial.polygonOffset = true;
+                    this.polygonMaterial.polygonOffsetFactor = -10;
+                    this.polygonMaterial.polygonOffsetUnits = -10;
                     this.polygonMaterial.transparent = true;
                 }
             }
@@ -442,16 +460,26 @@ class FeatureLayer extends  THREE.Group{
                 if(featureLayer.featureType === "gml:MultiPoint" || featureLayer.featureType === "gml:Point")
                 {
                     this.pointMaterial = new THREE.PointsMaterial({color: this.regulator.color, transparent:true, opacity: this.regulator.opacity});
+                    this.pointMaterial.polygonOffset = true;
+                    this.pointMaterial.polygonOffsetFactor = -10;
+                    this.pointMaterial.polygonOffsetUnits = -10;
                 }
                 if(featureLayer.featureType === "gml:MultiLineString" || featureLayer.featureType === "gml:LineString")
                 {
-                    this.lineMaterial = featureLayer.regulator.lineDotted?
-                        new THREE.LineDashedMaterial({color: this.regulator.color, transparent:true, opacity: this.regulator.opacity,
-                            dashSize: this.regulator.lineDashSize, gapSize: this.regulator.lineGapSize, scale: this.regulator.lineScale})
-                        : new THREE.LineBasicMaterial({color: this.regulator.color, transparent:true, opacity: this.regulator.opacity});
+                    this.lineMaterial = fitTerrainMaterialGen.getLineMaterial(this.regulator.fitPattern);
+                    this.lineMaterial.color =  this.regulator.color;
+                    this.lineMaterial.uniforms["opacity"].value = this.regulator.opacity;
+                    this.lineMaterial.uniforms["linewidth"].value = this.regulator.size;
+                    this.lineMaterial.polygonOffset = true;
+                    this.lineMaterial.polygonOffsetFactor = -10;
+                    this.lineMaterial.polygonOffsetUnits = -10;
+                    this.lineMaterial.transparent = true;
                 }
                 if(featureLayer.featureType === "gml:MultiPolygon" || featureLayer.featureType === "gml:Polygon") {
                     this.polygonMaterial = new THREE.MeshBasicMaterial({color: this.regulator.color, transparent:true, opacity: this.regulator.opacity});
+                    this.polygonMaterial.polygonOffset = true;
+                    this.polygonMaterial.polygonOffsetFactor = -10;
+                    this.polygonMaterial.polygonOffsetUnits = -10;
                 }
             }
             //
@@ -504,7 +532,7 @@ class FeatureLayer extends  THREE.Group{
         this.downlaodFeatures = [];
 
 
-        THREE.FontManager.getFont("msyh");
+        THREE.FontManager.getFont(this.labelControler.fontName);
 
         /**
          * 创建矢量标注
@@ -526,7 +554,7 @@ class FeatureLayer extends  THREE.Group{
                 labelPos.z = position[2];
             }
             // 标注
-            let tmpFont = THREE.FontManager.getFont("msyh");
+            let tmpFont = THREE.FontManager.getFont(this.labelControler.fontName);
             if(tmpFont !== null) {
                 let textShape = new THREE.BufferGeometry();
                 let shapes = tmpFont.generateShapes(text, featureLayer.labelControler.fontSize, featureLayer.labelControler.fontDivisions);
@@ -653,6 +681,7 @@ class FeatureLayer extends  THREE.Group{
                         //
                         pointMesh.frustumCulled = false;
                         pointMesh.visible = true;
+                        pointMesh.propId = featureProp.id;
                         pointMesh.isFeature = true;
                         featureLayer.add(pointMesh);
                         pointMesh.updateMatrixWorld();
@@ -678,7 +707,8 @@ class FeatureLayer extends  THREE.Group{
                         //
                         let geom = jsonFt["geometry"]
 
-                        let lineGeom = new THREE.BufferGeometry();
+
+
                         let multiLineObj = new MeshObjInfo();
 
                         let coords = geom["coordinates"]
@@ -686,9 +716,10 @@ class FeatureLayer extends  THREE.Group{
                         for (let j = 0, cslength = coords.length; j < cslength; ++j) {
                             let coord = coords[j];
 
-                            lineGeom.addAttribute('position', new THREE.Float32BufferAttribute(coord, 3));
+                            let lineGeom =new THREE.LineGeometry();
+                            lineGeom.setPositions( coord );
 
-                            let lineMesh = new THREE.Line(lineGeom, featureLayer.lineMaterial);
+                            let lineMesh =  new THREE.Line2(lineGeom, featureLayer.lineMaterial);
 
                             if(featureLayer.regulator.fitPattern === FeatureLayer.FIT_PATTERN.ASSIGN_MANUAL )
                             {
@@ -717,12 +748,13 @@ class FeatureLayer extends  THREE.Group{
                             }
                             //
                             lineMesh.polygonOffset = true;
-                            lineMesh.polygonOffsetFactor = -2.0;
+                            lineMesh.polygonOffsetFactor = -10.0;
                             lineMesh.polygonOffsetUnits = -10.0;
 
                             //
                             lineMesh.frustumCulled = false;
                             lineMesh.visible = true;
+                            lineMesh.propId = featureProp.id;
 
                             multiLineObj.meshObj[multiLineObj.meshObj.length] = lineMesh;
                             lineMesh.isFeature = true;
@@ -803,12 +835,13 @@ class FeatureLayer extends  THREE.Group{
                             }
                             //
                             holeMesh.polygonOffset = true;
-                            holeMesh.polygonOffsetFactor = -2.0;
+                            holeMesh.polygonOffsetFactor = -10.0;
                             holeMesh.polygonOffsetUnits = -10.0;
 
                             //
                             holeMesh.frustumCulled = false;
                             holeMesh.visible = true;
+                            holeMesh.propId = featureProp.id;
 
                             //
                             multiPolyObj.meshObj[multiPolyObj.meshObj.length] = holeMesh;
@@ -849,12 +882,13 @@ class FeatureLayer extends  THREE.Group{
                         let lineMesh = new THREE.Line(lineGeom, featureLayer.lineMaterial);
 
                         lineMesh.polygonOffset = true;
-                        lineMesh.polygonOffsetFactor = -2.0;
+                        lineMesh.polygonOffsetFactor = -10.0;
                         lineMesh.polygonOffsetUnits = -10.0;
 
                         //
                         lineMesh.frustumCulled = false;
                         lineMesh.visible = true;
+                        lineMesh.propId = featureProp.id;
 
                         if(featureLayer.labelAvaliable)
                         {
@@ -916,12 +950,13 @@ class FeatureLayer extends  THREE.Group{
                         //
                         let holeMesh = new THREE.Mesh(holeGeom, featureLayer.polygonMaterial);
                         holeMesh.polygonOffset = true;
-                        holeMesh.polygonOffsetFactor = -2.0;
+                        holeMesh.polygonOffsetFactor = -10.0;
                         holeMesh.polygonOffsetUnits = -10.0;
 
                         //
                         holeMesh.frustumCulled = false;
                         holeMesh.visible = true;
+                        holeMesh.propId = featureProp.id;
 
                         if(featureLayer.labelAvaliable)
                         {
@@ -1017,6 +1052,9 @@ class FeatureLayer extends  THREE.Group{
          * @description 移除featureLayer中的过时数据
          */
         this.removeUnExpected = function () {
+            if(this.loadAllOnce) {
+                return;
+            }
             // mesh筛选--lastvisibleFrameNumber, removeUne
             for(let [fkey, fvalue] of featureLayer.features)
             {
@@ -1048,49 +1086,65 @@ class FeatureLayer extends  THREE.Group{
             //
             cameraPos = camera.matrixWorldInverse.getLookAt().eye;
 
-            let lookAt = camera.matrixWorldInverse.getLookAt();
-
             //
-            let minZ_ = referenceTerrain.length === 0 ? 0 : 999999;
-            for(let i=0; i<referenceTerrain.length; ++i) {
-                let bs = referenceTerrain[i].getBoundingSphereWorld();
-                if(bs.center.z < minZ_)
-                    minZ_ = bs.center.z;
-            }
-            if(minZ !== minZ_) {
-                minZ = minZ_;
-                //
-                for(let i=0, glength = grid.length; i<glength; ++i) {
-                    grid[i].position.z = minZ;
-                    grid[i].updateMatrixWorld();
-                }
-            }
-            // 获取与视椎体相交的网格，并存储到visibleGrid中
-            let visibleGrid = [];
-            for(let i=0, glength = grid.length; i<glength; ++i) {
-                if(frustum.intersectsObject(grid[i])) {
-                    visibleGrid[visibleGrid.length] = grid[i];
-                }
-            }
             // 获取最大的包围盒
             let bx = new THREE.Box3();
-            for(let i=0, vbLen = visibleGrid.length; i<vbLen; ++i) {
-                bx.expandByBox3(visibleGrid[i].getBoundingBox());
-            }
-
             // 只有在可视范围变化时更新
             let newVisibleRange = false;
-            if(lastVisibleRange.length === 0) {
-                lastVisibleRange[0] = bx.min.x;
-                lastVisibleRange[1] = bx.min.y;
-                lastVisibleRange[2] = bx.max.x;
-                lastVisibleRange[3] = bx.max.y;
-                //
-                newVisibleRange = true;
+            //
+            if(!this.loadAllOnce) {
+                let minZ_ = referenceTerrain.length === 0 ? 0 : 999999;
+                for(let i=0; i<referenceTerrain.length; ++i) {
+                    let bs = referenceTerrain[i].getBoundingSphereWorld();
+                    if(bs.center.z < minZ_)
+                        minZ_ = bs.center.z;
+                }
+                if(minZ !== minZ_) {
+                    minZ = minZ_;
+                    //
+                    for(let i=0, glength = grid.length; i<glength; ++i) {
+                        grid[i].position.z = minZ;
+                        grid[i].updateMatrixWorld();
+                    }
+                }
+                // 获取与视椎体相交的网格，并存储到visibleGrid中
+                let visibleGrid = [];
+                for(let i=0, glength = grid.length; i<glength; ++i) {
+                    if(frustum.intersectsObject(grid[i])) {
+                        visibleGrid[visibleGrid.length] = grid[i];
+                    }
+                }
+
+
+                for(let i=0, vbLen = visibleGrid.length; i<vbLen; ++i) {
+                    bx.expandByBox3(visibleGrid[i].getBoundingBox());
+                }
+
+                if(lastVisibleRange.length === 0) {
+                    lastVisibleRange[0] = bx.min.x;
+                    lastVisibleRange[1] = bx.min.y;
+                    lastVisibleRange[2] = bx.max.x;
+                    lastVisibleRange[3] = bx.max.y;
+                    //
+                    newVisibleRange = true;
+                }
+                else if(Math.abs(lastVisibleRange[0] - bx.min.x) > 0.001 || Math.abs(lastVisibleRange[1] - bx.min.y) > 0.001 ||
+                    Math.abs(lastVisibleRange[2] - bx.max.x) > 0.001 || Math.abs(lastVisibleRange[3] - bx.max.y) > 0.001) {
+                    newVisibleRange = true;
+                }
             }
-            else if(Math.abs(lastVisibleRange[0] - bx.min.x) > 0.001 || Math.abs(lastVisibleRange[1] - bx.min.y) > 0.001 ||
-                Math.abs(lastVisibleRange[2] - bx.max.x) > 0.001 || Math.abs(lastVisibleRange[3] - bx.max.y) > 0.001) {
-                newVisibleRange = true;
+            else {
+                bx.max.set(this.boundBox.max.x, this.boundBox.max.y, 0.0);
+                bx.min.set(this.boundBox.min.x, this.boundBox.min.y, 0.0);
+                //
+                if(lastVisibleRange.length === 0) {
+                    lastVisibleRange[0] = this.boundBox.min.x;
+                    lastVisibleRange[1] = this.boundBox.min.y;
+                    lastVisibleRange[2] = this.boundBox.max.x;
+                    lastVisibleRange[3] = this.boundBox.max.y;
+                    //
+                    newVisibleRange = true;
+                }
             }
             //
             let flMatrixWorldInv = new THREE.Matrix4();

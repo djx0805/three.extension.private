@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>three.js webgl - level-of-details</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+        body {
+            background:#000;
+            color:#fff;
+            padding:0;
+            margin:0;
+            font-weight: bold;
+            overflow:hidden;
+        }
+
+        #c{
+            width:100vw;
+            height:100vh;
+            display: block;
+        }
+
+        a { color:red }
+
+    </style>
+</head>
+
+<body>
+<div id="container">
+    <canvas id="c"></canvas>
+</div>
+
+<script src="../node_modules/three/build/three.js"></script>
+<script src="../build/three.extension.js"></script>
+<script src="../build/three.loader.js"></script>
+<script src="../build/tjh.ar.js"></script>
+<script src="../build/tjh.ar.tools.js"></script>
+<script src="../node_modules/three/examples/js/Detector.js"></script>
+<script src="../node_modules/three/examples/js/libs/stats.min.js"></script>
+<script src="../node_modules/jquery/dist/jquery.min.js"></script>
+<script>
+
+    if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+    var container, stats;
+
+    var camera, scene, renderer;
+
+    var geometry, objects;
+
+    var controls, clock = new THREE.Clock();
+
+    var viewer = new tjh.ar.Viewer(document.getElementById('c'));
+    viewer.onEndFrame = ()=> {
+        stats.update();
+    }
+    init();
+    viewer.setBeginFrameCallBack(function () {
+        //controls.update();
+    })
+    viewer.run();
+
+    function init() {
+
+        container = document.getElementById( 'container' );
+        document.body.appendChild( container );
+
+        renderer = viewer.getRenderer();
+        //
+        camera = viewer.camera;
+
+        camera.position.set(-4403.47 + 3000,-4006.83 + 3000, 2000);
+        camera.lookAt(new THREE.Vector3(-4403.47 + 3000,-4006.83 + 3000, 24.8352));
+
+        //controls.target = new THREE.Vector3(-618, 510, 31.14);
+        //controls.update();
+        controls = new tjh.ar.BasicTerrainControls(viewer);
+        viewer.pushEventListenerFront(controls);
+
+        scene = viewer.getScene();
+        scene.fog = new THREE.Fog( 0x000000, 1, 15000 );
+        scene.autoUpdate = false;
+
+        scene.globalOffset[0] = 636775;
+        scene.globalOffset[1] = 5371100;
+        scene.globalOffset[2] = 50;
+
+
+        var light = new THREE.PointLight( 0xff2200 );
+        light.position.set( 0, 0, 0 );
+        //scene.add( light );
+
+        var light = new THREE.DirectionalLight( 0xffffff );
+        light.position.set( 0, 0, 1 ).normalize();
+        scene.addLightSource( light );
+
+        var terrainLayer = new tjh.ar.TerrainLayer();
+        terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=e3412e05-37e3-4256-b3aa-4ee9e0c3ae48");
+
+        scene.addTerrainLayer(terrainLayer);
+
+        var ftLayerPoint = new tjh.ar.FeatureLayer("http://192.168.10.9:8080/geoserver/tjh/ows?service=WFS&version=1.0.0&typeName=tjh:ft_test_ludeng&maxFeatures=50", "./models/obj//walt/WaltHead.obj", true, scene.terrainLayers, scene.globalOffset);
+        var ftLayerLine = new tjh.ar.FeatureLayer("http://192.168.10.9:8080/geoserver/tjh/ows?service=WFS&version=1.0.0&typeName=tjh:ft_test_roadcenterline&maxFeatures=50","",false, scene.terrainLayers, scene.globalOffset);
+
+        // point
+        ftLayerPoint.regulator.color.set(0xff0000);
+        ftLayerPoint.regulator.size = 10;
+
+        // more controls
+        ftLayerPoint.regulator.fitPattern = tjh.ar.FeatureLayer.FIT_PATTERN.FIT_TERRIAN_LOW;
+        ftLayerPoint.regulator.setReplaceWithModel(true);
+        ftLayerPoint.regulator.setHighValue(150.04) ;
+
+        ftLayerPoint.initMaterial();
+
+        // line
+        ftLayerLine.labelAvaliable = true;
+        ftLayerLine.regulator.color.set(0x00ffff);
+        ftLayerLine.regulator.size = 2;
+
+        // more controls
+        ftLayerLine.regulator.denseRate = 5;
+        ftLayerLine.regulator.fitPattern = tjh.ar.FeatureLayer.FIT_PATTERN.FIT_TERRIAN_LOW;
+        ftLayerLine.regulator.setHighValue(150.04) ;
+
+        ftLayerLine.labelAvaliable = true;
+
+        ftLayerLine.initMaterial();
+
+        scene.addFeatureLayer(ftLayerPoint);
+        scene.addFeatureLayer(ftLayerLine);
+
+
+        let defaultRenderTechnique = new tjh.ar.OutLineTechnique(renderer, scene, camera);
+        viewer.pushRenderTechnique(defaultRenderTechnique);
+        //
+        stats = new Stats();
+        container.appendChild( stats.dom );
+    }
+</script>
+
+</body>
+</html>
