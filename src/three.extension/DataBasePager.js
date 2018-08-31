@@ -41,31 +41,37 @@ THREE.DataBasePager = function (createWorker = true) {
      */
     this.enableRequestData = true;
     //
+    this.loadRequest = [];
+    //
     this._passedRequest_ = [];
-    this.maxSortRequests = 0;
     this.cullGroup = false;
     //
     if(createWorker) {
         let loader = this;
-        this.nodeLoadWorker = new Worker('../src/worker/nodeParserWorker.js');
-        this.nodeLoadWorker.onmessage = function (massage) {
-            --loader.loadingCount;
-            //
-            let node = massage.data;
-            if(node) {
-                let tmp = loader.loadedNodeCache.get(node.requestURL);
-                if(!tmp) {
-                    return;
-                }
+        this._worker_index_ = 0;
+        this.nodeLoadWorker = [new Worker('../src/worker/nodeParserWorker.js'), new Worker('../src/worker/nodeParserWorker.js'),
+            new Worker('../src/worker/nodeParserWorker.js'), new Worker('../src/worker/nodeParserWorker.js')];
+        //
+        for(let n=0, length = this.nodeLoadWorker.length; n<length; ++n) {
+            this.nodeLoadWorker[n].onmessage = function (massage) {
+                --loader.loadingCount;
                 //
-                if(node.children) {
-                    loader.loadedNodeCache.set(node.requestURL, node);
+                let node = massage.data;
+                if(node) {
+                    let tmp = loader.loadedNodeCache.get(node.requestURL);
+                    if(!tmp) {
+                        return;
+                    }
+                    //
+                    if(node.children) {
+                        loader.loadedNodeCache.set(node.requestURL, node);
+                    }
+                    else {
+                        loader.loadedNodeCache.delete(node.requestURL);
+                    }
                 }
-                else {
-                    loader.loadedNodeCache.delete(node.requestURL);
-                }
-            }
-        };
+            };
+        }
     }
     else {
         this.nodeLoadWorker = null;
@@ -82,10 +88,10 @@ THREE.DataBasePager.prototype = Object.assign( Object.create( THREE.EventDispatc
 /**
  * 请求数据
  * @param {string} url -所要求数据的url
- * @returns {boolean}
+ * @returns {boolean}  -是否成功
  */
-THREE.DataBasePager.prototype.load = function(url, frameNumber, force = false, weight = -1) {
-    if(!this.enableRequestData) {
+THREE.DataBasePager.prototype.load = function(url) {
+    if(!this.enableRequestData || !url) {
         return false;
     }
     //
@@ -94,89 +100,57 @@ THREE.DataBasePager.prototype.load = function(url, frameNumber, force = false, w
         return true;
     }
     //
-    let loadUrl = "";
-    let loadWeight = -1;
-    //
-    if(!force) {
-        if(this.loadingCount > this.maxWaitingLoaded) {
-            //console.log("too many load");
-            if(this._passedRequest_.length > 0 && this._passedRequest_[0].frameNumber < frameNumber - 1) {
-                this._passedRequest_.splice(0,1);
-            }
-            //
-            for(let n=0, length = this._passedRequest_.length; n<length; ++n) {
-                if(frameNumber > this._passedRequest_[n].frameNumber) {
-                    continue;
-                }
-                else if(this._passedRequest_[n].weight < 0) {
-                    continue;
-                }
-                else if(weight <= this._passedRequest_[n].weight) {
-                    continue;
-                }
-                else {
-                    this._passedRequest_.splice(n, 0, {url:url, frameNumber:frameNumber, weight:weight});
-                    if(this._passedRequest_.length > this.maxSortRequests) {
-                        this._passedRequest_.splice(this.maxSortRequests, 1);
-                    }
-                    return false;
-                }
-            }
-            //
-            if(this._passedRequest_.length < this.maxSortRequests) {
-                this._passedRequest_[this._passedRequest_.length] = {url:url, frameNumber:frameNumber, weight:weight};
-            }
-            //
-            return false;
-        }
-        //
-        let numRemove = 0;
-        while(numRemove < this._passedRequest_.length && this._passedRequest_[numRemove].frameNumber < frameNumber - 1) {
-           ++numRemove;
-        }
-        this._passedRequest_.splice(0, numRemove);
-        //
-        if(this._passedRequest_.length > 0) {
-            loadUrl = this._passedRequest_[0].url;
-            this._passedRequest_.splice(0,1);
-        }
-        else {
-            loadUrl = url;
-        }
-        //
-        if(loadUrl !== url) {
-            let inserted = false;
-            for(let n=0, length = this._passedRequest_.length; n<length; ++n) {
-                if(frameNumber > this._passedRequest_[n].frameNumber) {
-                    continue;
-                }
-                else if(this._passedRequest_[n].weight < 0) {
-                    continue;
-                }
-                else if(weight <= this._passedRequest_[n].weight) {
-                    continue;
-                }
-                else {
-                    this._passedRequest_.splice(n, 0, {url:url, frameNumber:frameNumber, weight:weight});
-                    inserted = true;
-                }
-            }
-            //
-            if(!inserted) {
-                this._passedRequest_[this._passedRequest_.length] = {url:url, frameNumber:frameNumber, weight:weight};
-            }
-        }
-    }
-    else {
-        loadUrl = url;
-    }
-    //
-    this.loadedNodeCache.set(loadUrl, {isPlaceholder: true});
+    this.loadedNodeCache.set(url, {isPlaceholder: true});
     ++this.loadingCount;
-    this.nodeLoadWorker.postMessage(loadUrl);
+    this.nodeLoadWorker[this._worker_index_++].postMessage(url);
+    this._worker_index_ = this._worker_index_ % this.nodeLoadWorker.length;
     return true;
 };
 
+
+THREE.DataBasePager.prototype.requestData = function (requests) {
+    if(!this.enableRequestData) {
+        return false;
+    }
+    //
+    if(requests.length > 1 && !requests[requests.length-1].sorted) {
+        requests.sort((a,b)=> {
+            if(a.weight > 0 && b.weight > 0) {
+                let ratio = a.weight/b.weight;
+                if(ratio <= 0.5) {
+                    return 1;
+                }
+                if(ratio >= 2) {
+                    return -1;
+                }
+            }
+            if(a.weight < 0 && b.weight > 0) {
+                return -1;
+            }
+            if(a.weight > 0 && b.weight < 0) {
+                return 1;
+            }
+            if(a.disToEye > 0 && b.disToEye > 0 && Math.abs(a.disToEye - b.disToEye) > 10) {
+                return a.disToEye - b.disToEye;
+            }
+            //
+            return a.level - b.level;
+        });
+        //
+        requests[requests.length] = {sorted : true};
+    }
+
+    //console.log(requests);
+    //
+    for(; this.loadingCount<this.maxWaitingLoaded; ) {
+        if(requests.length > 0) {
+            this.load(requests[0].url, requests[0].frameNumber, true);
+            requests.splice(0,1);
+        }
+        else
+            break;
+    }
+}
 /**
  * 将请求后的数据转换为 THREE.Object3D 对象
  * @param {Object} proxy -代表请求数据的中间数据
@@ -185,7 +159,7 @@ THREE.DataBasePager.prototype.load = function(url, frameNumber, force = false, w
  * @param {THREE.Object3D} [node] -递归中间参数，不用指定
  * @param {Array} [meshes] -递归中间参数，不用指定
  * @param {Object} [textures] -递归中间参数，不用指定
- * @returns {THREE.Object3D}
+ * @returns {THREE.Object3D}  -节点
  */
 THREE.DataBasePager.prototype.proxyParse = function (proxy, node, meshes, textures) {
     if(meshes === undefined) {
@@ -225,8 +199,6 @@ THREE.DataBasePager.prototype.proxyParse = function (proxy, node, meshes, textur
                 this.proxyParse(proxy.children[n], group, meshes, textures);
             }
         }
-        //
-
     }
     //else if(proxy instanceof  PagedLodProxy) {
     else if(proxy.flag === 1) {
@@ -353,15 +325,26 @@ THREE.DataBasePager.prototype.proxyParse = function (proxy, node, meshes, textur
                     else {
                         let textureLoader = null;
                         let texture = null;
-                        let netUrl = encodeURIComponent(proxy.material[n].texture.url);
-                        if(netUrl.substr(-4, 4) === '.dds') {
-                            textureLoader = new THREE.CompressedTextureLoader();
-                            texture = textureLoader.load(proxy.material[n].texture.url, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+                        if(proxy.material[n].texture.blobContent) {
+                            let netUrl = URL.createObjectURL(proxy.material[n].texture.blobContent);
+                            textureLoader = new THREE.TextureLoader();
+                            texture = textureLoader.load(netUrl, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+                            let isJPEG = proxy.material[n].texture.url.search( /\.(jpg|jpeg)$/ ) > 0 || url.search( /^data\:image\/jpeg/ ) === 0;
+                            texture.format = isJPEG ? THREE.RGBFormat : THREE.RGBAFormat;
                         }
                         else {
-                            textureLoader = new THREE.TextureLoader();
-                            texture = textureLoader.load(proxy.material[n].texture.url, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+                            let netUrl = proxy.material[n].texture.url;
+
+                            if(netUrl.substr(-4, 4) === '.dds') {
+                                textureLoader = new THREE.CompressedTextureLoader();
+                                texture = textureLoader.load(netUrl, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+                            }
+                            else {
+                                textureLoader = new THREE.TextureLoader();
+                                texture = textureLoader.load(netUrl, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+                            }
                         }
+                        //
                         texture.wrapS = proxy.material[n].texture.wrapS;
                         texture.wrapT = proxy.material[n].texture.wrapT;
                         texture.minFilter = proxy.material[n].texture.minFilter;
@@ -401,16 +384,28 @@ THREE.DataBasePager.prototype.proxyParse = function (proxy, node, meshes, textur
                     }
                     else {
                         let textureLoader = null;
-                        let netUrl = encodeURIComponent(proxy.material.texture.url);
                         let texture = null;
-                        if(netUrl.substr(-4, 4) === '.dds') {
-                            textureLoader = new THREE.CompressedTextureLoader();
-                            texture = textureLoader.load(proxy.material.texture.url, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+
+                        if(proxy.material.texture.blobContent) {
+                            let netUrl = URL.createObjectURL(proxy.material.texture.blobContent);
+                            textureLoader = new THREE.TextureLoader();
+                            texture = textureLoader.load(netUrl, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+                            let isJPEG = proxy.material.texture.url.search( /\.(jpg|jpeg)$/ ) > 0 || url.search( /^data\:image\/jpeg/ ) === 0;
+                            texture.format = isJPEG ? THREE.RGBFormat : THREE.RGBAFormat;
                         }
                         else {
-                            textureLoader = new THREE.TextureLoader();
-                            texture = textureLoader.load(proxy.material.texture.url, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+                            let netUrl = proxy.material.texture.url;
+
+                            if(netUrl.substr(-4, 4) === '.dds') {
+                                textureLoader = new THREE.CompressedTextureLoader();
+                                texture = textureLoader.load(netUrl, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+                            }
+                            else {
+                                textureLoader = new THREE.TextureLoader();
+                                texture = textureLoader.load(netUrl, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+                            }
                         }
+
                         texture.wrapS = proxy.material.texture.wrapS;
                         texture.wrapT = proxy.material.texture.wrapT;
                         texture.minFilter = proxy.material.texture.minFilter;
@@ -508,7 +503,7 @@ THREE.DataBasePager.prototype.checkCacheReady = function (strID, onFailed) {
 
                 }
                 else if(!material.map.image) {
-                    return {state:THREE.DataBasePager.TEX_STATE_LOADING};
+                    return {state:THREE.DataBasePager.TEX_STATE.TEX_STATE_LOADING};
                 }
                 else if(material.map.image.failedLoad) {
                     if(onFailed) {
@@ -533,7 +528,7 @@ THREE.DataBasePager.prototype.checkCacheReady = function (strID, onFailed) {
 
                     }
                     else if(!material[i].map.image) {
-                        return {state:THREE.DataBasePager.TEX_STATE_LOADING};
+                        return {state:THREE.DataBasePager.TEX_STATE.TEX_STATE_LOADING};
                     }
                     else if(material[i].map.image.failedLoad) {
                         if(onFailed) {

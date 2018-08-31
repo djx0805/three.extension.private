@@ -18,7 +18,7 @@ class PyramidImage extends THREE.PagedLod {
             let texture = loadingData.texture;
             //
             let tileUrl = this.imgID.toString()+"*"+tileInfo.level+"*"+tileInfo.row+"*"+tileInfo.col;
-            console.log("load tile " + tileUrl);
+            // console.log("load tile " + tileUrl);
 
             let vpMatrix = this.viewMatrix.clone().premultiply(this.projectMatrix);
             let invM = new THREE.Matrix4();

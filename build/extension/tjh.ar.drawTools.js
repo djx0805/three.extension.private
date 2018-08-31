@@ -69,7 +69,7 @@ class DrawTools extends tjh.ar.tools.ToolBase {
             mouse.y = - ( clientY / drawTool.viewer.domElement.clientHeight ) * 2 + 1;
             //
             drawTool.raycaster.setFromCamera( mouse, drawTool.viewer.camera);
-            let intersects = drawTool.raycaster.intersectObjects( fitLayer,true);
+            let intersects = drawTool.raycaster.intersectObject( fitLayer,true);
             //
             if(intersects.length !== 0)
             {
@@ -278,7 +278,7 @@ class DrawTools extends tjh.ar.tools.ToolBase {
                     mouse.y = - ( clientY / drawTool.viewer.domElement.clientHeight ) * 2 + 1;
                     //
                     drawTool.raycaster.setFromCamera( mouse, drawTool.viewer.camera);
-                    let intersects = drawTool.raycaster.intersectObjects( fitLayer, true);
+                    let intersects = drawTool.raycaster.intersectObject( fitLayer, true);
                     //
                     if (intersects.length === 0)
                         return false;
@@ -338,7 +338,7 @@ class DrawTools extends tjh.ar.tools.ToolBase {
                     mouse.y = - ( clientY / drawTool.viewer.domElement.clientHeight ) * 2 + 1;
                     //
                     drawTool.raycaster.setFromCamera( mouse, drawTool.viewer.camera);
-                    let intersects = drawTool.raycaster.intersectObjects(fitLayer,true);
+                    let intersects = drawTool.raycaster.intersectObject(fitLayer,true);
                     //
                     if(intersects.length === 0)
                         return false;
@@ -421,7 +421,7 @@ class DrawTools extends tjh.ar.tools.ToolBase {
                     mouse.y = - ( clientY / drawTool.viewer.domElement.clientHeight ) * 2 + 1;
                     //
                     drawTool.raycaster.setFromCamera( mouse, drawTool.viewer.camera);
-                    let intersects = drawTool.raycaster.intersectObjects(fitLayer, true);
+                    let intersects = drawTool.raycaster.intersectObject(fitLayer, true);
                     //
                     if(intersects.length === 0)
                         return false;
@@ -520,7 +520,7 @@ class DrawTools extends tjh.ar.tools.ToolBase {
                     mouse.y = - ( clientY / drawTool.viewer.domElement.clientHeight ) * 2 + 1;
                     //
                     drawTool.raycaster.setFromCamera( mouse, drawTool.viewer.camera);
-                    let intersects = drawTool.raycaster.intersectObjects( fitLayer,true);
+                    let intersects = drawTool.raycaster.intersectObject( fitLayer,true);
                     //
                     let tv = [];
                     if(intersects.length === 0)
@@ -556,7 +556,7 @@ class DrawTools extends tjh.ar.tools.ToolBase {
                     mouse.y = - ( clientY / drawTool.viewer.domElement.clientHeight ) * 2 + 1;
                     //
                     drawTool.raycaster.setFromCamera( mouse, drawTool.viewer.camera);
-                    let intersects = drawTool.raycaster.intersectObjects(fitLayer, true);
+                    let intersects = drawTool.raycaster.intersectObject(fitLayer, true);
                     //
                     let tv = [];
                     if(intersects.length === 0 || !offset)
@@ -617,7 +617,7 @@ class DrawTools extends tjh.ar.tools.ToolBase {
                         mouse.y = - ( clientY / drawTool.viewer.domElement.clientHeight ) * 2 + 1;
                         //
                         drawTool.raycaster.setFromCamera( mouse, drawTool.viewer.camera);
-                        let intersects = drawTool.raycaster.intersectObjects(fitLayer, true);
+                        let intersects = drawTool.raycaster.intersectObject(fitLayer, true);
                         //
                         let tv = [];
                         if(intersects.length === 0 || !offset)

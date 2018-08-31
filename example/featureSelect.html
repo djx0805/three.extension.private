@@ -80,13 +80,8 @@
 				scene.autoUpdate = false;
 				scene.globalOffset = [538835, 3370701, 0];
 
-				var light = new THREE.PointLight( 0xff2200 );
-				light.position.set( 0, 0, 0 );
-				scene.addLightSource( light );
-
-				var light = new THREE.DirectionalLight( 0xffffff );
-				light.position.set( 0, 0, 1 ).normalize();
-				scene.addLightSource( light );
+                var ambientLight = new THREE.AmbientLight( 0xffffff );
+                scene.addLightSource( ambientLight );
 
 				var terrainLayer = new tjh.ar.TerrainLayer();
                 terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=0889a58e-51c4-4444-b515-cc17dabcece8");

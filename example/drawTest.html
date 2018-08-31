@@ -121,19 +121,25 @@
         scene.addModelLayer(modelLayer);
 
 
+        var drawTool = new DrawTools(viewer, terrainLayer, modelLayer, scene.globalOffset);
+        drawTool.drawOptions.color = new THREE.Color(0xffff00);
+        drawTool.drawOptions.opacity = 0.6;
+        drawTool.drawMode = DrawTools.DRAW_MODE.DRAW_POLYGON;
+
+        viewer.pushEventListenerFront(drawTool);
 
 
-       var measureTool = new MeasureTools(viewer, terrainLayer, scene.globalOffset);
+       /* var measureTool = new MeasureTools(viewer, terrainLayer, scene, scene.globalOffset);
 
         measureTool.drawOptions.color = new THREE.Color(0xffff00);
         measureTool.drawOptions.opacity = 0.8;
-        measureTool.measureMode = MeasureTools.MEASURE_MODE.MEASURE_EARTH_SURFACE;
+        measureTool.measureMode = MeasureTools.MEASURE_MODE.MEASURE_SPACE_SURFACE;
 
         measureTool.labelControler.color = new THREE.Color(0xff0000);
         measureTool.labelControler.opacity = 0.6;
         measureTool.labelControler.fontSize = 5;
         measureTool.initMaterial();
-        viewer.pushEventListenerFront(measureTool);
+        viewer.pushEventListenerFront(measureTool);*/
 
         //
         let defaultRenderTechnique = new tjh.ar.RenderTechnique(renderer, scene, camera);

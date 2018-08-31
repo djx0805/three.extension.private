@@ -1,11 +1,23 @@
+/**
+ * @classdesc 内存深度取样器
+ * @class
+ * @memberOf tjh.ar
+ */
 class MemDepthSampler {
     constructor() {
+        /**
+         * 取样模式
+         * @enum
+         */
         MemDepthSampler.SAMPLE_MODE = {
+            /** @description 普通高度*/
           SAMPLE_MODE_NORMAL : 0,
+            /** @description 低值*/
           SAMPLE_MODE_LOW : 1,
+            /** @description 高值*/
           SAMPLE_MODE_HIGH : 2
         };
-        //
+
         this.noValue = 0;
         this.size = [0,0];
         this.range = [0,0,0,0];
@@ -14,7 +26,13 @@ class MemDepthSampler {
         //
         let unpackDownscale = 255.0 / 256.0;
         this._unpackFactors = new THREE.Vector4( unpackDownscale/(256.0 * 256.0 * 256.0), unpackDownscale/(256.0 * 256.0),  unpackDownscale/256.0, unpackDownscale);
-        //
+
+        /**
+         * 根据x, y 获取该点的普通深度
+         * @param {number} x -x
+         * @param {number} y -y
+         * @return {number} -深度
+         */
         let getZNormal = (x, y)=> {
             if(x < this.range[0] || x > this.range[1] || y < this.range[2] || y > this.range[3]) {
                 return this.noValue;
@@ -36,6 +54,12 @@ class MemDepthSampler {
             return z;
         };
 
+        /**
+         * 根据x, y 获取该点的低值
+         * @param {number} x -x
+         * @param {number} y -y
+         * @return {number} -深度
+         */
         let getZLow = (x, y)=> {
             if(x < this.range[0] || x > this.range[1] || y < this.range[2] || y > this.range[3]) {
                 return this.noValue;
@@ -57,6 +81,13 @@ class MemDepthSampler {
             return z;
         }
 
+        /**
+         * 根据x, y 获取该点的高值
+         * @param {number} x -x
+         * @param {number} y -y
+         * @param {number} sample_mode -取样模式
+         * @return {number} -深度
+         */
         this.getZ = (x,y, sample_mode)=> {
             if(sample_mode === MemDepthSampler.SAMPLE_MODE.SAMPLE_MODE_NORMAL) {
                 return getZNormal(x, y);

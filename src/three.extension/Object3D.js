@@ -165,7 +165,7 @@ THREE.Object3D.prototype.getBoundingSphere = function () {
         }
         //
         if(this.geometry.boundingSphere)
-            this.boundingSphereWorld.expandBySphere(this.geometry.boundingSphere.clone().applyMatrix4(this.matrix));
+            this.boundingSphere.expandBySphere(this.geometry.boundingSphere.clone().applyMatrix4(this.matrix));
     }
     //
     this.boundingComputed = true;
@@ -309,15 +309,21 @@ THREE.Object3D.prototype.updateMatrixWorld = function (force) {
 /**
  * 释放函数
  */
-THREE.Object3D.prototype.dispose = function (gpuRelease = true, memRelease = true) {
+THREE.Object3D.prototype.dispose = function (canDispose = true, gpuRelease = true, memRelease = true) {
+    if(!canDispose) {
+        for(let n=0, length = this.children.length; n<length; n++) {
+            this.children[n].dispose(canDispose, gpuRelease, memRelease);
+        }
+        return;
+    }
+    //
     for(let n=0, length = this.children.length; n<length; n++) {
-        this.children[n].dispose(gpuRelease, memRelease);
+        this.children[n].dispose(canDispose, gpuRelease, memRelease);
         if(memRelease)
             this.children[n] = null;
     }
     if(memRelease)
         this.children = [];
 };
-
 
 

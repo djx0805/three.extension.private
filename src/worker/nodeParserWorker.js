@@ -1,6 +1,6 @@
 importScripts( "nodeProxyType.js" );
 
-let osgjsParseToProxy = (json, node, stateSets, textures, vertexes, baseServerUrl) => {
+let osgjsParseToProxy = (json, node, stateSets, textures, vertexes, baseServerUrl, containTexture) => {
     if(node === undefined) {
         node = new GroupProxy();
     }
@@ -24,8 +24,10 @@ let osgjsParseToProxy = (json, node, stateSets, textures, vertexes, baseServerUr
         else
             baseServerUrl = "";
     }
-
-
+    //
+    if(containTexture === undefined && json.containTexture) {
+        containTexture = true;
+    }
     //
     for(var key in json) {
         let strKey = key.toString();
@@ -34,7 +36,7 @@ let osgjsParseToProxy = (json, node, stateSets, textures, vertexes, baseServerUr
             if(json["osg.Node"].Name) {
                 group.name = json["osg.Node"].Name;
             }
-            osgjsParseToProxy(json["osg.Node"], group, stateSets, textures, vertexes, baseServerUrl);
+            osgjsParseToProxy(json["osg.Node"], group, stateSets, textures, vertexes, baseServerUrl, containTexture);
 
             if(group.children.length === 1 && (!group.name || group.name.length===0)) {
                 node.children.push(group.children[0]);
@@ -169,7 +171,7 @@ let osgjsParseToProxy = (json, node, stateSets, textures, vertexes, baseServerUr
                                     }
                                 }
                                 else if(group.children[i].drawMode === 1) {
-                                    for(let n=2, numIndexes = indexes[i].length; n<numIndexes; ++n) {
+                                    for(let n=2, length = indexes[i].length; n<length; ++n) {
                                         let i_0 = 0, i_1 = 0, i_2 = 0;
                                         //
                                         if((n%2) !== 0) {
@@ -231,7 +233,7 @@ let osgjsParseToProxy = (json, node, stateSets, textures, vertexes, baseServerUr
                             for(let i=0, numIndexes = indexes.length; i<numIndexes; ++i) {
                                 let start = groupVertexes.length/3;
                                 let count = 0;
-                                for(let n=0, numIndexes = indexes[i].length; n<numIndexes; ++n) {
+                                for(let n=0, length = indexes[i].length; n<length; ++n) {
                                     groupVertexes[groupVertexes.length] = vertexes[i][n*3];
                                     groupVertexes[groupVertexes.length] = vertexes[i][n*3 + 1];
                                     groupVertexes[groupVertexes.length] = vertexes[i][n*3 + 2];
@@ -280,7 +282,7 @@ let osgjsParseToProxy = (json, node, stateSets, textures, vertexes, baseServerUr
         }
         else if(strKey === "Children") {
             for(let i=0; i<json["Children"].length; i++) {
-                osgjsParseToProxy(json["Children"][i], node, stateSets, textures, vertexes, baseServerUrl);
+                osgjsParseToProxy(json["Children"][i], node, stateSets, textures, vertexes, baseServerUrl, containTexture);
             }
         }
         else if(strKey === "osg.MatrixTransform") {
@@ -289,7 +291,7 @@ let osgjsParseToProxy = (json, node, stateSets, textures, vertexes, baseServerUr
                 //
                 if(json["osg.MatrixTransform"].Name)
                     node.name = json["osg.MatrixTransform"].Name;
-                osgjsParseToProxy(json["osg.MatrixTransform"], node, stateSets, textures, vertexes, baseServerUrl);
+                osgjsParseToProxy(json["osg.MatrixTransform"], node, stateSets, textures, vertexes, baseServerUrl, containTexture);
             }
             else {
                 let group = new GroupProxy();
@@ -297,7 +299,7 @@ let osgjsParseToProxy = (json, node, stateSets, textures, vertexes, baseServerUr
                     group.name = json["osg.MatrixTransform"].Name;
                 }
                 group.matrix = json["osg.MatrixTransform"].Matrix;
-                osgjsParseToProxy(json["osg.MatrixTransform"], group, stateSets, textures, vertexes, baseServerUrl);
+                osgjsParseToProxy(json["osg.MatrixTransform"], group, stateSets, textures, vertexes, baseServerUrl, containTexture);
                 node.children.push(group);
             }
         }
@@ -309,7 +311,7 @@ let osgjsParseToProxy = (json, node, stateSets, textures, vertexes, baseServerUr
             }
 
             var fileList = json["osg.ProxyNode"].RangeDataList;
-            osgjsParseToProxy(json["osg.ProxyNode"], proxy, stateSets, textures, vertexes, baseServerUrl);
+            osgjsParseToProxy(json["osg.ProxyNode"], proxy, stateSets, textures, vertexes, baseServerUrl, containTexture);
             var files = Object.keys(fileList);
             for(let n=0; n<files.length; n++) {
                 if(fileList[files[n]].trim().length === 0)
@@ -326,7 +328,7 @@ let osgjsParseToProxy = (json, node, stateSets, textures, vertexes, baseServerUr
             if(json["osg.PagedLOD"].Name) {
                 pagedLod.name = json["osg.PagedLOD"].Name;
             }
-            osgjsParseToProxy(json["osg.PagedLOD"], pagedLod, stateSets, textures, vertexes, baseServerUrl);
+            osgjsParseToProxy(json["osg.PagedLOD"], pagedLod, stateSets, textures, vertexes, baseServerUrl, containTexture);
             let rangeList = json["osg.PagedLOD"].RangeList;
             let fileList = json["osg.PagedLOD"].RangeDataList;
             //
@@ -420,7 +422,7 @@ let osgjsParseToProxy = (json, node, stateSets, textures, vertexes, baseServerUr
                         if(osgTex["WrapT"]) {
                             textureProxy.wrapT = osgTex["WrapT"]==="REPEAT" ? 1000 : (osgTex["WrapT"]==="CLAMP_TO_EDGE" ? 1001 : 1002);
                         }
-						let texUrl = baseServerUrl.replace("osgjs","texture");
+                        let texUrl = containTexture ? "" : baseServerUrl.replace("osgjs","texture");
                         textureProxy.url = texUrl.length > 2 ? texUrl + encodeURIComponent(osgTex["File"]) : osgTex["File"];// encodeURIComponent
                         material.texture = textureProxy;
                     }
@@ -488,39 +490,220 @@ let osgjsParseToProxy = (json, node, stateSets, textures, vertexes, baseServerUr
     //
     if(json.requestURL !== undefined) {
         node.requestURL = json.requestURL;
+        stateSets  =null;
+        textures = null;
+        vertexes = null;
         return node;
     }
 }
 
-self.onmessage = function ( message ) {
+let LoaderUtils = {
+
+    decodeText: function ( array ) {
+
+        if ( typeof TextDecoder !== 'undefined' ) {
+
+            return new TextDecoder().decode( array );
+
+        }
+
+        // Avoid the String.fromCharCode.apply(null, array) shortcut, which
+        // throws a "maximum call stack size exceeded" error for large arrays.
+
+        var s = '';
+
+        for ( var i = 0, il = array.length; i < il; i ++ ) {
+
+            // Implicitly assumes little-endian.
+            s += String.fromCharCode( array[ i ] );
+
+        }
+
+        // Merges multi-byte utf-8 characters.
+        return decodeURIComponent( escape( s ) );
+
+    },
+
+    extractUrlBase: function ( url ) {
+
+        var parts = url.split( '/' );
+
+        if ( parts.length === 1 ) return './';
+
+        parts.pop();
+
+        return parts.join( '/' ) + '/';
+
+    }
+
+};
+
+let parseSingle = function ( data) {
+    let content;
+    if(data.length === 0)
+        return ""
+    else
+    {
+        content = LoaderUtils.decodeText( new Uint8Array( data, 0) );
+    }
+    return {osgjsContent:content};
+}
+
+
+
+let parseStream = function ( data ) {
+
+    let tileInfo = {
+        osgjsContent: "",
+        osgjsName: "",
+        texture : new Map(),
+    };
+    let magic = LoaderUtils.decodeText( new Uint8Array( data, 0, 5 ) );
+
+    if ( magic !== 'osgjs' ) {
+        return null;
+    }
+
+    let chunkView = new DataView( data, 5 );
+    let chunkIndex = 0;
+
+    // this.texture = new Map();
+    while ( chunkIndex < chunkView.byteLength ) {
+        let chunkType = chunkView.getUint32( chunkIndex, true );
+        chunkIndex += 4;
+
+        if ( chunkType === 11111 ) {
+            // name
+            let nameLength = chunkView.getUint32( chunkIndex, true );
+            chunkIndex += 4;
+            tileInfo.osgjsName = LoaderUtils.decodeText( new Uint8Array( data, 5+chunkIndex, nameLength ) );
+
+            chunkIndex += nameLength;
+
+            // osgjs content
+            let osgjsContentLength = chunkView.getUint32( chunkIndex, true );
+            chunkIndex += 4;
+            tileInfo.osgjsContent = LoaderUtils.decodeText( new Uint8Array( data, 5+chunkIndex, osgjsContentLength ) );
+
+            chunkIndex += osgjsContentLength;
+        } else if ( chunkType === 11011 ) {
+            // name
+            let nameLength = chunkView.getUint32( chunkIndex, true );
+            chunkIndex += 4;
+            let textureName = LoaderUtils.decodeText( new Uint8Array( data, 5+chunkIndex, nameLength ) );
+
+            chunkIndex += nameLength;
+
+            // mime
+
+            // texture content
+            let textureContentLength = chunkView.getUint32( chunkIndex, true );
+            chunkIndex += 4;
+            let textureData = new Uint8Array( data, chunkIndex + 5, textureContentLength );
+            let blob = new Blob( [textureData], { type: "image/jpeg" } );
+            tileInfo.texture.set(textureName, blob);
+
+            chunkIndex += textureContentLength;
+        }
+    }
+
+    chunkView = null;
+
+    return tileInfo;
+
+}
+
+let replaceTexture = (node, textures)=> {
+    if(node.flag === 2 ) {
+        if(node.material instanceof Array)
+        {
+            for(let j = 0, numChild = node.material.length; j < numChild; ++j)
+            {
+                let mat = node.material[j];
+                if(mat && mat.texture) {
+                    let blob = textures.get(mat.texture.url);
+                    if (blob) {
+                        mat.texture.blobContent = blob;
+                    }
+                }
+            }
+        }
+        else if(node.material && node.material.texture) {
+            let blob = textures.get(node.material.texture.url);
+            if(blob) {
+                node.material.texture.blobContent = blob;
+            }
+        }
+    }
+    //
+    if(node.children) {
+        for(let i=0, numChild = node.children.length; i<numChild; ++i) {
+            replaceTexture(node.children[i], textures);
+        }
+    }
+}
+
+self.onmessage = ( message )=> {
     let xhr = new XMLHttpRequest();
-    xhr.timeout = 10000;
+    xhr.timeout = 5000;
     xhr.open('GET', message.data);
     xhr.worker = self;
     xhr.requestURL = message.data;
+    xhr.responseType = "arraybuffer";
     xhr.onload = function() {
         if ((this.status >= 200 && this.status < 300)) {
-            let node = new GroupProxy();
-            //
-            let resp = this.response;
-            let firstCode = resp.charCodeAt(0);
-            if (firstCode < 0x20 || firstCode > 0x7f) {
-                resp = resp.substring(1); // 去除第一个字符
-            }
+            let tileInfo = null;
             try {
-                let json = JSON.parse(resp);
-                json.requestURL = this.requestURL;
-                osgjsParseToProxy(json, node);
+                tileInfo = parseStream(this.response);
+                if(!tileInfo) {
+                    tileInfo = parseSingle(this.response);
+                }
+                else {
+                    tileInfo.containTexture = true;
+                }
                 //
-                this.worker.postMessage(node);
-                node = null;
+                this.response = null;
             }
             catch(err) {
                 let node = new GroupProxy();
                 node.requestURL = this.requestURL;
                 node.children = null;
                 this.worker.postMessage(node);
-                console.log("error data");
+                console.log("receive wrong data");
+                //
+                return;
+            }
+            //
+            let firstCode = tileInfo.osgjsContent.charCodeAt(0);
+            if (firstCode < 0x20 || firstCode > 0x7f) {
+                tileInfo.osgjsContent = tileInfo.osgjsContent.substring(1); // 去除第一个字符
+            }
+            //
+            try {
+                let node = new GroupProxy();
+                let json = JSON.parse(tileInfo.osgjsContent);
+                json.containTexture = tileInfo.containTexture ? true : undefined;
+                json.requestURL = this.requestURL;
+                osgjsParseToProxy(json, node);
+                json = null;
+                //
+                if(tileInfo.texture)
+                {
+                    if(tileInfo.texture.size > 0) {
+                        replaceTexture(node, tileInfo.texture);
+                    }
+                }
+                //
+                this.worker.postMessage(node);
+            }
+            catch(err) {
+                let node = new GroupProxy();
+                node.requestURL = this.requestURL;
+                node.children = null;
+                this.worker.postMessage(node);
+                console.log("json parse error");
+                //
+                return ;
             }
         }
         else {

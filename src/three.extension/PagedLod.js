@@ -41,8 +41,12 @@ THREE.PagedLod.prototype.addLevel = function ( url, min, max ) {
  * @param {string} url
  * @returns {boolean}
  */
-THREE.PagedLod.prototype.loadChild = function (url, frameNumber, weight) {
-    return this.dataBasePager.load(url, frameNumber, false, weight);
+THREE.PagedLod.prototype.loadChild = function (url, frameNumber, level, disToEye, weight) {
+    if(this.dataBasePager.loadRequest.length > 1000 && this._level_ > 6) {
+        return;
+    }
+    this.dataBasePager.loadRequest[this.dataBasePager.loadRequest.length] = {url:url, frameNumber:frameNumber, level:level, disToEye:disToEye, weight};
+    //return this.dataBasePager.load(url, frameNumber, false, weight);
 };
 
 /**
@@ -56,18 +60,26 @@ THREE.PagedLod.prototype.removeUnExpectedChild = function (maxFrameCount) {
                 this.dataBasePager.loadedNodeCache.delete(this.levels[i].url);
                 this.dataBasePager.loadingTextureCache.delete(this.levels[i].url);
                 this.dataBasePager.parsedNodeCache.delete(this.levels[i].url);
+                //
+                this.levels[i].lastVisitFrame = 0;
             }
+
             for(; n<this.children.length;) {
-                this.children[n].dispose();
-                this.children[n] = null;
-                this.children.splice(n, 1);
+                let canDispose = this.levels[n].url.length > 0 ? true : false;
+                this.children[n].dispose(canDispose);
+                if(canDispose) {
+                    this.children[n] = null;
+                    this.children.splice(n, 1);
+                }
+                else {
+                    n++;
+                }
             }
             //
             break;
         }
-        else if(n < this.children.length){
-            if(this.children[n].removeUnExpectedChild)
-                this.children[n].removeUnExpectedChild(maxFrameCount);
+        else if(n < this.children.length && this.children[n].removeUnExpectedChild){
+            this.children[n].removeUnExpectedChild(maxFrameCount);
         }
     }
 };
@@ -78,10 +90,22 @@ THREE.PagedLod.prototype.removeUnExpectedChild = function (maxFrameCount) {
  * @param {object} context -更新上下文参数
  */
 THREE.PagedLod.prototype.update = function (context, visibleMesh) {
+    if(this._level_) {
+        context.currentLevel = this._level_;
+    } else if(context.currentLevel !== undefined) {
+        this._level_ = context.currentLevel++;
+    }
+    else {
+        this._level_ = 0;
+        context.currentLevel = 0;
+    }
+    //
     let camera = context.camera;
     let frustum = context.frustum;
     //
     const bs = this.getBoundingSphereWorld().clone();
+    const disToEye = bs.valid() ? bs.center.clone().distanceTo(context.camera.position) : -1;
+    //
     if(!bs.valid() || frustum.intersectsSphere(bs)) {
         this.frustumCulled = false;
         this.visible = true;
@@ -89,9 +113,7 @@ THREE.PagedLod.prototype.update = function (context, visibleMesh) {
     else {
         this.visible = false;
         for(let n = 0, length = this.levels.length; n<length; ++n) {
-            if(this.levels[n].url.length > 0) {
-                this.levels[n].lastVisitFrame++;
-            }
+            this.levels[n].lastVisitFrame++;
         }
         return;
     }
@@ -101,17 +123,21 @@ THREE.PagedLod.prototype.update = function (context, visibleMesh) {
     }
     //
     let dis = 0;
+    let screenPixelSize = 0;
     let rangeMode = this.getRangeMode();
     if(rangeMode === THREE.LOD.RangeMode.DISTANCE_FROM_EYE_POINT) {
         const v1 = new THREE.Vector3();
         const v2 = bs.center.clone();
         v1.setFromMatrixPosition( camera.matrixWorld );
         dis = v1.distanceTo( v2 );
+        //
+        screenPixelSize = Math.abs(bs.radius/(bs.center.dot(camera.pixelSizeVector) + camera.pixelSizeVector.w));
     }
     else if(rangeMode === THREE.LOD.RangeMode.PIXEL_SIZE_ON_SCREEN) {
         dis = Math.abs(bs.radius/(bs.center.dot(camera.pixelSizeVector) + camera.pixelSizeVector.w));
         //
         dis*=this.dataBasePager.pageScaleFunc(context, this);
+        screenPixelSize = dis;
     }
     //
     let visibleObj = [];
@@ -198,14 +224,22 @@ THREE.PagedLod.prototype.update = function (context, visibleMesh) {
                     afterFailed();
                     break;
                 }
+                else if(textureState.state === THREE.DataBasePager.TEX_STATE.TEX_STATE_LOADING) {
+                    afterFailed();
+                    //
+                    break;
+                }
                 else {
+                    console.log("texture state error");
+                    //
+                    this.dataBasePager.parsedNodeCache.delete(this.levels[i].url);
                     afterFailed();
                     //
                     break;
                 }
             }
             else {
-                this.loadChild(this.levels[i].url, context.numFrame, dis);
+                this.loadChild(this.levels[i].url, context.numFrame, this._level_, disToEye, screenPixelSize);
                 //
                 if(i>0) {
                     if(rangeMode === THREE.LOD.RangeMode.PIXEL_SIZE_ON_SCREEN ? this.levels[i].sps[0] >= this.levels[i - 1].sps[1] : this.levels[i].sps[1] <= this.levels[i - 1].sps[0]) {
@@ -296,13 +330,18 @@ THREE.PagedLod.prototype.update = function (context, visibleMesh) {
                         afterFailed();
                         break;
                     }
+                    else if(textureState.state === THREE.DataBasePager.TEX_STATE.TEX_STATE_LOADING) {
+                        afterFailed();
+                        //
+                        break;
+                    }
                     else {
                         afterFailed();
                         break;
                     }
                 }
                 else {
-                    this.loadChild(this.levels[i].url, context.numFrame, dis);
+                    this.loadChild(this.levels[i].url, context.numFrame, this._level_, disToEye, screenPixelSize);
                     //
                     if(i>0) {
                         if(rangeMode === THREE.LOD.RangeMode.PIXEL_SIZE_ON_SCREEN ? this.levels[i].sps[0] >= this.levels[i - 1].sps[1] : this.levels[i].sps[1] <= this.levels[i - 1].sps[0]) {
@@ -323,8 +362,12 @@ THREE.PagedLod.prototype.update = function (context, visibleMesh) {
         else {
             if(i === 0) {
                 this.visible = false;
-                return;
             }
+            //
+            for(;i<this.levels.length; ++i) {
+                this.levels[i].lastVisitFrame++;
+            }
+            //
             break;
         }
     }
@@ -333,70 +376,40 @@ THREE.PagedLod.prototype.update = function (context, visibleMesh) {
         visibleObj=[{obj:this.children[lastValidLevel], level:lastValidLevel, needUpdate:false}];
     }
     //
-    for(let n=targetLevel + 1, length = this.levels.length; n<length; ++n) {
-        this.levels[n].lastVisitFrame++;
-    }
-    //
-    let lookAt = context.lookAt ? context.lookAt : camera.matrixWorldInverse.getLookAt();
-    let updatingChildren = [];
-    //
-    for(let n=0, length = visibleObj.length; n<length; ++n) {
-        if(visibleObj[n].obj.visible)
-            continue;
+    let checkChild = (visibleObj)=> {
+        if(visibleObj.obj.visible)
+            return;
         //
-        if(visibleObj[n].obj.isPagedLod){
-            let bs = visibleObj[n].obj.getBoundingSphereWorld();
-            if(frustum.intersectsSphere(bs)) {
-                visibleObj[n].obj.visible = true;
-                visibleObj[n].obj.frustumCulled = false;
-                //
-                if(visibleObj[n].needUpdate) {
-                    updatingChildren[updatingChildren.length] = {child:visibleObj[n].obj, disToEye:lookAt.eye.clone().sub(bs.center).lengthSq()};
-                    //visibleObj[n].obj.update(context, visibleMesh);
-                }
-                else {
-                    if(visibleMesh) {
-                        visibleMesh[visibleMesh.length] = visibleObj[n].obj;
-                    }
-                }
-            }
-            else {
-                visibleObj[n].obj.visible = false;
-            }
-        }
-        else if(visibleObj[n].obj.isGroup){
-            let bs = visibleObj[n].obj.getBoundingSphereWorld();
-            if(!bs.valid() || frustum.intersectsSphere(bs)) {
-                visibleObj[n].obj.visible = true;
-                visibleObj[n].obj.frustumCulled = false;
-                //
-                if(visibleObj[n].needUpdate) {
-                    updatingChildren[updatingChildren.length] = {child:visibleObj[n].obj, disToEye:lookAt.eye.clone().sub(bs.center).lengthSq()};
-                    //visibleObj[n].obj.update(context, visibleMesh);
-                }
-                else {
-                    if(visibleMesh) {
-                        visibleMesh[visibleMesh.length] = visibleObj[n].obj;
-                    }
-                }
-            }
-            else {
-                visibleObj[n].obj.visible = false;
-            }
-        }
-        else if(visibleObj[n].obj.isMesh){
-            visibleObj[n].obj.visible = true;
-            visibleObj[n].obj.frustumCulled = false;
+        const bs = visibleObj.obj.getBoundingSphereWorld().clone();
+        //
+        if(visibleObj.obj.update && visibleObj.needUpdate) {
+            visibleObj.obj.visible = true;
+            visibleObj.obj.frustumCulled = false;
             //
-            if(visibleMesh) {
-                visibleMesh[visibleMesh.length] = visibleObj[n].obj;
+            child:visibleObj.obj.update(context, visibleMesh);
+        }
+        else {
+            if(!bs.valid() || context.frustum.intersectsSphere(bs)) {
+                visibleObj.obj.visible = true;
+                visibleObj.obj.frustumCulled = false;
+                //
+                if(visibleMesh) {
+                    visibleMesh[visibleMesh.length] = visibleObj.obj;
+                }
+            }
+            else {
+                visibleObj.obj.visible = false;
             }
         }
     }
-    //
-    updatingChildren.sort((a,b)=>{return a.disToEye - b.disToEye});
-    for(let n=0, length = updatingChildren.length; n<length; ++n) {
-        updatingChildren[n].child.update(context, visibleMesh);
+    for(let n=0, length = visibleObj.length; ;) {
+        if(n<length) {checkChild(visibleObj[n++])} else break;
+        if(n<length) {checkChild(visibleObj[n++])} else break;
+        if(n<length) {checkChild(visibleObj[n++])} else break;
+        if(n<length) {checkChild(visibleObj[n++])} else break;
+        if(n<length) {checkChild(visibleObj[n++])} else break;
+        if(n<length) {checkChild(visibleObj[n++])} else break;
+        if(n<length) {checkChild(visibleObj[n++])} else break;
     }
     //
     visibleObj = null;
@@ -406,15 +419,34 @@ THREE.PagedLod.prototype.update = function (context, visibleMesh) {
 /**
  * 清除函数
  */
-THREE.PagedLod.prototype.dispose = function () {
+THREE.PagedLod.prototype.dispose = function (canDispose) {
     for(let n=0, length = this.levels.length; n<length; ++n) {
         this.dataBasePager.loadedNodeCache.delete(this.levels[n].url);
         this.dataBasePager.loadingTextureCache.delete(this.levels[n].url);
         this.dataBasePager.parsedNodeCache.delete(this.levels[n].url);
     }
-    for(let n=0, length = this.children.length; n<length; n++) {
-        this.children[n].dispose();
-        this.children[n] = null;
+    //
+    if(canDispose) {
+        for(let n=0, length = this.children.length; n<length; n++) {
+            this.children[n].dispose(true);
+            this.children[n] = null;
+        }
+        //
+        this.children = [];
     }
-    this.children = [];
+    else {
+        let removable = [];
+        for(let n=0, length = this.children.length; n<length; n++) {
+            let canDispose = this.levels[n].url.length > 0 ? true : false;
+            this.children[n].dispose(canDispose);
+            if(canDispose) {
+                removable[removable.length] = this.children[n];
+            }
+        }
+        //
+        for(let n=0, length = removable.length; n<length; ++n) {
+            this.remove(removable[n]);
+        }
+        removable = null;
+    }
 };

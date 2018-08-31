@@ -20,37 +20,48 @@ THREE.Group.prototype.removeUnExpectedChild = function (maxFrameCount) {
  * 更新函数，由渲染循环调用
  * @param {object} context -更新上下文参数
  */
-THREE.Group.prototype.update = function (context, visibleMesh) {
-    this.visible = true;
-    let updatingChildren = [];
-    let lookAt = context.lookAt ? context.lookAt : context.camera.matrixWorldInverse.getLookAt();
-    for(let n=0, length = this.children.length; n<length; n++) {
-        const bs = this.children[n].getBoundingSphereWorld();
-        if(!bs.valid() || context.frustum.intersectsSphere(bs)) {
-            this.children[n].visible = true;
-            this.children[n].frustumCulled = false;
+
+THREE.Group.prototype.update = function () {
+    let updateChild = (child, context, updatingChildren, visibleMesh) => {
+        const bs = child.getBoundingSphereWorld().clone();
+        //
+        if(child.update) {
+            child.visible = true;
+            child.frustumCulled = false;
             //
-            if(visibleMesh && (this.children[n].isMesh || this.children[n].isLine || this.children[n].isPoints)) {
-                visibleMesh[visibleMesh.length] = this.children[n];
-            }
+            child.update(context, visibleMesh);
         }
         else {
-            this.children[n].visible = false;
-        }
-        //
-        if(this.children[n].update) {
-            if(!bs.valid() || !context.dataBasePager || !context.dataBasePager.cullGroup || context.frustum.intersectsSphere(bs)) {
-                updatingChildren[updatingChildren.length] = {child:this.children[n], disToEye:lookAt.eye.clone().sub(bs.center).lengthSq()};
+            if(!bs.valid() || context.frustum.intersectsSphere(bs)) {
+                child.visible = true;
+                child.frustumCulled = false;
+                //
+                if(visibleMesh && (child.isMesh || child.isLine || child.isPoints)) {
+                    visibleMesh[visibleMesh.length] = child;
+                }
             }
-            //this.children[n].update(context, visibleMesh);
+            else {
+                child.visible = false;
+            }
         }
-    }
-    //
-    updatingChildren.sort((a,b)=> {return a.disToEye - b.disToEye});
-    for(let n=0, length = updatingChildren.length; n<length; ++n) {
-        updatingChildren[n].child.update(context, visibleMesh);
-    }
-};
+    };
+    return function (context, visibleMesh) {
+        this.visible = true;
+        this.frustumCulled = false;
+        //
+        let updatingChildren = [];
+        for(let n=0, length = this.children.length;;) {
+            if(n<length) {updateChild(this.children[n++], context, updatingChildren, visibleMesh)} else  break;
+            if(n<length) {updateChild(this.children[n++], context, updatingChildren, visibleMesh)} else  break;
+            if(n<length) {updateChild(this.children[n++], context, updatingChildren, visibleMesh)} else  break;
+            if(n<length) {updateChild(this.children[n++], context, updatingChildren, visibleMesh)} else  break;
+            if(n<length) {updateChild(this.children[n++], context, updatingChildren, visibleMesh)} else  break;
+            if(n<length) {updateChild(this.children[n++], context, updatingChildren, visibleMesh)} else  break;
+            if(n<length) {updateChild(this.children[n++], context, updatingChildren, visibleMesh)} else  break;
+            if(n<length) {updateChild(this.children[n++], context, updatingChildren, visibleMesh)} else  break;
+        }
+    };
+}();
 
 /**
  * 射线相交测试

@@ -24,13 +24,16 @@ class FeatureLayer extends  THREE.Group{
          * @type {bool}
          */
 	    this.matrixAutoUpdate = false;
+
+        /**
+         * 是否一次全部加载 loadAllOnce
+         * @type {bool}
+         */
+        this.loadAllOnce = false;
         /**
          * 适量贴合模式
          * @enum {number}
          */
-
-        this.loadAllOnce = false;
-        //
         FeatureLayer.FIT_PATTERN = {
             /** @description 贴合地形周围低值*/
             FIT_TERRIAN_LOW: 0,
@@ -234,7 +237,7 @@ class FeatureLayer extends  THREE.Group{
          */
         this.labelControler = {
             /**
-             * 标注可用性设置 setAvaliability
+             * 标注可用性设置
              * @type {function}
              */
             setAvaliability : function(valid){
@@ -242,33 +245,33 @@ class FeatureLayer extends  THREE.Group{
                 featureLayer.isReplaceWithModel = !valid;
             },
             /**
-             * 标注透明度 opacity
+             * 标注透明度
              * @type {number}
              *
              */
             opacity : 1.0,
             /**
-             * 标注颜色 color
+             * 标注颜色
              * @type {THREE.Color}
              */
             color : new THREE.Color(0xffff00),
             /**
-             * 标注的面 side
+             * 标注的面
              * @type {THREE.DoubleSize}
              */
             side : THREE.DoubleSize,
             /**
-             * 标注字体大小 fontSize
+             * 标注字体大小
              * @type {number}
              */
             fontSize : 5,
             /**
-             * 标注字距 fontDivisions
+             * 标注字距
              * @type {number}
              */
             fontDivisions : 2,
             /**
-             * 标注字体 font
+             * 标注字体
              * @type {number}
              */
             fontName : "msyh",

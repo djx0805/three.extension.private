@@ -5,7 +5,7 @@ class PathCreateTool extends  tjh.ar.tools.ToolBase {
         let datumZ = 0;
         //
         this.pathVertexes = [];
-        this.tempVertices = [];
+        let tempVertices = [];
         let offset = null;
         //
         let terrainBB = new THREE.Box3();
@@ -34,10 +34,6 @@ class PathCreateTool extends  tjh.ar.tools.ToolBase {
             datumZ = z;
             plane.position.z = z;
             plane.updateMatrixWorld();
-        }
-
-        this.getDatumZ = function () {
-            return datumZ;
         }
 
 
@@ -91,14 +87,14 @@ class PathCreateTool extends  tjh.ar.tools.ToolBase {
                         offset = intersect.clone();
                     }
                     //
-                    this.tempVertices[this.tempVertices.length] = intersect.x - offset.x;
-                    this.tempVertices[this.tempVertices.length] = intersect.y - offset.y;
-                    this.tempVertices[this.tempVertices.length] = intersect.z - offset.z;
+                    tempVertices[tempVertices.length] = intersect.x - offset.x;
+                    tempVertices[tempVertices.length] = intersect.y - offset.y;
+                    tempVertices[tempVertices.length] = intersect.z - offset.z;
                     //
                     if(this.pathVertexes.length === 1) {
                         let pointGeom = new THREE.BufferGeometry();
 
-                        pointGeom.addAttribute('position', new THREE.Float32BufferAttribute(this.tempVertices, 3));
+                        pointGeom.addAttribute('position', new THREE.Float32BufferAttribute(tempVertices, 3));
 
                         let pointMesh = new THREE.Points(pointGeom, new THREE.PointsMaterial({color:0xffff00, size:3}));
                         pointMesh.position.copy(offset);
@@ -112,7 +108,7 @@ class PathCreateTool extends  tjh.ar.tools.ToolBase {
                     }
                     else {
                         let lineGeom = new THREE.BufferGeometry();
-                        lineGeom.addAttribute('position', new THREE.Float32BufferAttribute(this.tempVertices, 3));
+                        lineGeom.addAttribute('position', new THREE.Float32BufferAttribute(tempVertices, 3));
                         let lineMesh = new THREE.Line(lineGeom, new THREE.LineBasicMaterial({color:0xffff00}));
 
                         lineMesh.position.copy(offset);

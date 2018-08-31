@@ -115,10 +115,7 @@ class MeasureTools extends tjh.ar.WindowEventListener {
              * @type {number}
              */
             fontDivisions : 2,
-            /**
-             * 标注字体 fontName
-             * @type {string}
-             */
+
             fontName:"helvetiker_regular",
         }
 
@@ -146,7 +143,7 @@ class MeasureTools extends tjh.ar.WindowEventListener {
             lineMaterial.depthTest = false;
 
             polygonMaterial = new THREE.MeshBasicMaterial(measureTool.drawOptions);
-            // polygonMaterial.depthTest = false;
+            polygonMaterial.depthTest = false;
 
             polyhedronMaterial = new THREE.MeshBasicMaterial(measureTool.drawOptions);
             polyhedronMaterial.depthTest = false;
@@ -376,7 +373,7 @@ class MeasureTools extends tjh.ar.WindowEventListener {
             let secV = new THREE.Vector3(tv[3], tv[4], 0.0);
 
             lineMesh.drawType = "line";
-            let coorText = fisV.distanceTo(secV).toFixed(2) + "m";
+            let coorText = fisV.distanceTo(secV).toFixed(2) ;
 
             fisV.z = tv[2];
             secV.z = tv[2];
@@ -403,7 +400,7 @@ class MeasureTools extends tjh.ar.WindowEventListener {
             let secV = new THREE.Vector3(tv[0], tv[1], tv[5]);
 
             lineMesh.drawType = "line";
-            let coorText = Math.abs(secV.z - fisV.z).toFixed(2) + "m";
+            let coorText = Math.abs(secV.z - fisV.z).toFixed(2) ;
             secV.x+=globalOffset[0];
             secV.y+=globalOffset[1];
             secV.z+=globalOffset[2];
@@ -454,7 +451,7 @@ class MeasureTools extends tjh.ar.WindowEventListener {
             lineMesh2.position.set(globalOffset[0], globalOffset[1], globalOffset[2]+measureTool.zOffset);
             tmp.add(lineMesh2);
 
-            let coorText = Math.abs(height).toFixed(2) + "m";
+            let coorText = Math.abs(height).toFixed(2) ;
 
             let linetLabel = createLabel(coorText, temPos);
             tmp.add(linetLabel);
@@ -510,7 +507,7 @@ class MeasureTools extends tjh.ar.WindowEventListener {
             pgCenter.y += globalOffset[1];
             pgCenter.z += globalOffset[2];
 
-            let coorText = computeSurface(tempVertices,false).toFixed(2)  + "m²";
+            let coorText = computeSurface(tempVertices,false).toFixed(2) ;
 
             let pgLabel = createLabel(coorText, pgCenter);
 
@@ -558,7 +555,7 @@ class MeasureTools extends tjh.ar.WindowEventListener {
             pgMesh.drawType = "SpaceSurface";
 
             tempVertices[tempVertices.length] = tempVertices[0];
-            let sumSurface = computeSurface(tempVertices,true).toFixed(2) + "m²";
+            let sumSurface = computeSurface(tempVertices,true).toFixed(2);
             let coorText = sumSurface;
 
             let pgLabel = createLabel(coorText, pgCenter);
@@ -1038,7 +1035,7 @@ class MeasureTools extends tjh.ar.WindowEventListener {
                     mouse.y = - ( clientY / measureTool.viewer.domElement.clientHeight ) * 2 + 1;
                     //
                     measureTool.raycaster.setFromCamera( mouse, measureTool.viewer.camera);
-                    let intersects = measureTool.raycaster.intersectObjects( measureTool.refLayers,true);
+                    let intersects = measureTool.raycaster.intersectObject( measureTool.refLayers,true);
                     //
                     if(intersects.length === 0)
                         return false;

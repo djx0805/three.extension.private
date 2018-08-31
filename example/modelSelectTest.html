@@ -45,7 +45,7 @@
 		</div>
 
 
-		<script src="../node_modules/three/build/three.js"></script>
+		<script src="../build/three.js"></script>
 		<script src="../build/three.extension.js"></script>
 		<script src="../build/three.loader.js"></script>
 		<script src="../build/tjh.ar.js"></script>
@@ -95,7 +95,6 @@
 			viewer.run();
 
 			function init() {
-
 				container = document.getElementById( 'container' );
 				document.body.appendChild( container );
 
@@ -119,9 +118,8 @@
 				scene = viewer.getScene();
 				scene.autoUpdate = false;
 
-				var light = new THREE.PointLight( 0xff2200 );
-				light.position.set( 0, 0, 0 );
-				scene.addLightSource( light );
+                var ambientLight = new THREE.AmbientLight( 0xffffff );
+                scene.addLightSource( ambientLight );
 
 				var light = new THREE.DirectionalLight( 0xffffff );
 				light.position.set( 0, 0, 1 ).normalize();
@@ -141,9 +139,12 @@
                 var modelLayer = new tjh.ar.ModelLayer();
                 scene.addModelLayer(modelLayer);
                 //
+                let defaultRenderTechnique = new tjh.ar.OutLineTechnique(renderer, scene, camera);
+                viewer.pushRenderTechnique(defaultRenderTechnique);
+                //
                 var modelPlantTool = new  tjh.ar.tools.ModelPlantTool(viewer);
                 modelPlantTool.modelLayer = modelLayer;
-               // modelPlantTool.modelUrl = "./models/fbx/Samba Dancing.fbx";
+                //modelPlantTool.modelUrl = "./models/fbx/Samba Dancing.fbx";
                 modelPlantTool.modelUrl = " ./models/obj/female02/female02.obj";
                 //modelPlantTool.modelUrl = " ./models/obj/male02/male02.obj";
                 viewer.pushEventListenerFront(modelPlantTool);

@@ -112,8 +112,13 @@ THREE.LOD.prototype.update = function () {
     var v1 = new THREE.Vector3();
     var v2 = new THREE.Vector3();
 
-    return function update( context) {
-
+    return function update( context, visibleMesh) {
+        const bs = this.getBoundingSphereWorld().clone();
+        if (bs.valid() && !context.frustum.intersectsSphere(bs)) {
+            this.visible = false;
+            return;
+        }
+        //
         var levels = this.levels;
 
         if(this.getRangeMode() === THREE.LOD.RangeMode.DISTANCE_FROM_EYE_POINT) {
@@ -129,8 +134,13 @@ THREE.LOD.prototype.update = function () {
                     //
                     if(distance >= levels[ i ].distance[0] && distance < levels[i].distance[1]) {
                         levels[i].object.visible = true;
+                        //
+                        if(levels[i].object.isMesh && visibleMesh) {
+                            visibleMesh[visibleMesh.length] = levels[i].object;
+                        }
+                        //
                         if (levels[i].object.update) {
-                            levels[i].object.update(context);
+                            levels[i].object.update(context, visibleMesh);
                         }
                     }
                 }
@@ -144,8 +154,17 @@ THREE.LOD.prototype.update = function () {
                 //
                 if(ss >= levels[ i ].distance[0] && ss < levels[i].distance[1]) {
                     levels[i].object.visible = true;
+                    //
+                    if(levels[i].object.isMesh && visibleMesh) {
+                        visibleMesh[visibleMesh.length] = levels[i].object;
+                    }
+                    //
+                    if (levels[i].object.update) {
+                        levels[i].object.update(context, visibleMesh);
+                    }
                 }
             }
         }
     };
 }();
+

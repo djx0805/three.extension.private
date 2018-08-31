@@ -33,7 +33,7 @@
 	<body>
 	    <div id="container"></div>
 
-		<script src="../build/three.js"></script>
+		<script src="../build/three.min.js"></script>
 		<script src="../build/three.extension.js"></script>
 		<script src="../build/tjh.ar.js"></script>
 		<script src="../build/tjh.ar.tools.js"></script>
@@ -87,6 +87,7 @@
 
                 camera.position.set(530771-1274.28,2508554-425.81,2000);
                 camera.lookAt(new THREE.Vector3(530771-1274.28,2508554-425.81, 52));
+                camera.atuoCalculateNearFar = true;
 
 				scene = new tjh.ar.ARScene();
 				scene.fog = new THREE.Fog( 0x000000, 1, 15000 );
@@ -105,22 +106,48 @@
 
 				var terrainLayer = new tjh.ar.TerrainLayer();
 				terrainLayer.forceRootLoad = true;
-				terrainLayer.dataBasePager.maxWaitingLoaded = 1;
-				terrainLayer.dataBasePager.maxSortRequests = 30;
-				terrainLayer.dataBasePager.pageScaleFunc = function (contex, node) {
+				terrainLayer.dataBasePager.maxWaitingLoaded = 2;
+				terrainLayer.dataBasePager.maxSortRequests = 20;
+				terrainLayer.dataBasePager.pageScaleFunc = function (contex, node)  {
                     const v1 = new THREE.Vector3();
                     const v2 = new THREE.Vector3();
                     v1.setFromMatrixPosition( contex.camera.matrixWorld );
                     v2.setFromMatrixPosition( node.matrixWorld );
                     let disToCamera = v1.distanceTo( v2 );
-                    if(disToCamera > 1500) {
-                        return 1500.0/disToCamera;
+                    if(disToCamera > 2500) {
+                        return 2500.0/disToCamera;
                     }
                     //
 					return 1.0
                 };
-				//5
+                //terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=21b17487-63e8-42e4-b69a-a57cecad8034");
+
+                //terrainLayer.addTerrain("http://192.168.10.13:8002/api/data/osgjsData?urlInfo=352fff45-4c1d-45d4-89ce-7a857eb098ee");
+
+				//1-1
+                terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=c9011c35-0ad9-40b9-b883-e0228f20dd9f");
+                //1-2
                 terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=753a7f62-d48e-44c9-97f8-8cd698f5cdfc");
+                //3-1
+                terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=352fff45-4c1d-45d4-89ce-7a857eb098ee");
+                //3-2
+                terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=91698ea7-81a0-4ce3-8223-6b331584a463");
+                //5-1-1-新
+                terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=1c4b0dd7-bdc6-4ada-85d1-dc002318252a");
+                //5-1-2-新
+                terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=7d0e1a03-81f1-4c72-bd86-f8c6bcbf347c");
+                //6-1-新
+                terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=95b4aead-5fc2-4c4d-bae0-90ee0153da2c");
+                //6-2-新
+                terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=acebf65f-23b1-4ffd-92f4-21ff989da8fb");
+                //6-3-新
+                terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=1c53618b-fef1-4dca-b8de-5cb2fb01fe2d");
+                //7-1
+                terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=cd85c4d9-6e27-48a6-8c50-d90f2c549d29");
+                //7-2
+                terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=31990db7-8512-4784-8e4c-e32825054eb3");
+                //7-3
+                terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=cd68cf03-3d64-47e3-990c-8eb7217760a2");
                 //8-1
                 terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=e50e8236-f899-401f-8c3b-fd66695c7d95");
                 //8-2
@@ -131,17 +158,6 @@
                 terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=3e843be5-934c-4abd-942e-0732590ea6eb");
                 //9-2
                 terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=7b9c4be8-4697-4f06-884b-b7b72b945ae9");
-                //5-1-1-新
-                terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=1c4b0dd7-bdc6-4ada-85d1-dc002318252a");
-                //6-1-新
-                terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=95b4aead-5fc2-4c4d-bae0-90ee0153da2c");
-                //6-2-新
-                terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=acebf65f-23b1-4ffd-92f4-21ff989da8fb");
-                //6-3-新
-                terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=1c53618b-fef1-4dca-b8de-5cb2fb01fe2d");
-                //5-1-2-新
-                terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=7d0e1a03-81f1-4c72-bd86-f8c6bcbf347c");
-
 
 				/*var pagedLod0 = new THREE.PagedLod();
 				pagedLod0.addLevel("root.osgjs", 0, 100000);
@@ -152,7 +168,7 @@
 				//
 
 				var dataPager = new THREE.DataBasePager();
-				dataPager.maxWaitingLoaded = 1;
+				dataPager.maxWaitingLoaded = 2;
 				dataPager.maxSortRequests = 10;
 				dataPager.pageScaleFunc = function (contex, node) {
                     const v1 = new THREE.Vector3();
@@ -160,13 +176,52 @@
                     v1.setFromMatrixPosition( contex.camera.matrixWorld );
                     v2.setFromMatrixPosition( node.matrixWorld );
                     let disToCamera = v1.distanceTo( v2 );
-                    if(disToCamera > 1800) {
-                        return 1800.0/disToCamera;
+                    if(disToCamera > 3500) {
+                        return 3500.0/disToCamera;
                     }
                     //
                     return 1.0
                 };
-				//9-2单体化测试
+
+                //1-1单体化
+                scene.addModelLayer(new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "5c6db5be-681e-4816-ac43-19ce47a4aaa7", dataPager));
+                //1-2单体化
+                scene.addModelLayer(new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "21d01e7c-be3b-480c-9684-fa12a268f699", dataPager));
+                //3-1单体化
+                scene.addModelLayer(new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "a63415a8-0df7-4e2a-85a2-984b4d8ac1df", dataPager));
+                //3-2单体化
+                scene.addModelLayer(new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "166f86cf-67a5-42f2-8ca3-894710573729", dataPager));
+                //5-1-2单体化新
+                scene.addModelLayer(new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "5ec64193-c541-4705-b66f-15cb886a9b5a", dataPager));
+                //5-1-1单体化新
+                scene.addModelLayer(new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "38ebfe8b-74bd-4af9-a4fa-97aab0e7eae1", dataPager));
+                //6-1单体化新
+                scene.addModelLayer(new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "1939fead-9a6d-4cb7-a2e3-e0db6b47fc44", dataPager));
+                //6-2单体化
+                scene.addModelLayer(new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "a2c6c960-907e-4613-975d-257386fea19e", dataPager));
+                //7-1单体化
+                scene.addModelLayer(new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "17f9c67c-9d01-4f5e-896a-51a81f0d0eb9", dataPager));
+                //7-2单体化
+                scene.addModelLayer(new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "d0025abe-d230-419e-a2e0-95a4a02e5df3", dataPager));
+                //7-3单体化
+                scene.addModelLayer(new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "dc23798e-4a38-4f0a-88b4-39809fed2f5b", dataPager));
+                //单体化8-1测试
+                scene.addModelLayer(new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "de77d8ad-803b-469a-8a15-f37f55086096", dataPager));
+                //单体化8-2测试
+                scene.addModelLayer(new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "9b1fa73a-1828-452e-b1fb-adb4a011bb5b", dataPager));
+                //8-3单体化测试
+                scene.addModelLayer(new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "22e62fb2-da77-4660-be46-39ff8215aac2", dataPager));
+                //9-1单体化测试
+                scene.addModelLayer(new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "b6ed679a-1a38-4b9c-93dd-bc96979ae767", dataPager));
+                //9-2单体化测试
+                scene.addModelLayer(new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "8efe43fa-40bd-4ff5-bc7a-8f03a6559cc7", dataPager));
+
+				//
+/*
+                //5平单体化测试
+                var tjhModelLayer7 = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "8ea9e933-6cd1-4479-a350-a93b7df32743", dataPager);
+                scene.addModelLayer(tjhModelLayer7);
+                //9-2单体化测试
                 var tjhModelLayer = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "9af3e3da-ce7a-4c47-a70f-fc8faec3057c", dataPager);
                 scene.addModelLayer(tjhModelLayer);
                 //单体化8-1测试
@@ -177,28 +232,22 @@
                 scene.addModelLayer(tjhModelLayer2);
                 var tjhModelLayer4 = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "1caba847-72da-4374-9ad1-4115c3ab37fc", dataPager);
                 scene.addModelLayer(tjhModelLayer4);
-                var tjhModelLayer5 = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "becbec81-5e20-4bf1-b7f1-d67b1a2a1ed7", dataPager);
-                scene.addModelLayer(tjhModelLayer5);
+                //var tjhModelLayer5 = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "becbec81-5e20-4bf1-b7f1-d67b1a2a1ed7", dataPager);
+                //scene.addModelLayer(tjhModelLayer5);
                 //6-1单体化新
                 var tjhModelLayer6 = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "651d22c0-4fde-4e76-ad00-36c6677777b4", dataPager);
                 scene.addModelLayer(tjhModelLayer6);
-                //5平单体化测试
-                var tjhModelLayer7 = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "8ea9e933-6cd1-4479-a350-a93b7df32743", dataPager);
-                scene.addModelLayer(tjhModelLayer7);
+
                 //5-1-2单体化新
                 var tjhModelLayer8 = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "315c508f-503a-42f6-98ef-e4c3b0e401ff", dataPager);
                 scene.addModelLayer(tjhModelLayer8);
                 //5-1-1单体化新
                 var tjhModelLayer9 = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "ac4aa01c-c3a0-4543-9672-994a81683a68", dataPager);
                 scene.addModelLayer(tjhModelLayer9);
-				//
-                //let defaultRenderTechnique = new tjh.ar.RenderTechnique(renderer);
-                //let defaultRenderPass = new tjh.ar.NormalRenderPass(scene, camera);
-                //defaultRenderTechnique.addRenderPass(defaultRenderPass);
-                //viewer.pushRenderTechnique(defaultRenderTechnique);
-
+*/
                 let defaultRenderTechnique = new tjh.ar.OutLineTechnique(renderer, scene, camera);
                 viewer.pushRenderTechnique(defaultRenderTechnique);
+
                 //
                 var selectTool = null;
                 //

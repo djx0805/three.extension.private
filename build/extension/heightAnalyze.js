@@ -441,9 +441,9 @@ class HeightAnalyzeRenderPass extends tjh.ar.RenderPass {
                 //
                 renderer.setTexture2D( renderTarget.texture, 0 );
                 renderer.context.copyTexImage2D( renderer.context.TEXTURE_2D, 0, renderer.context.RGBA, 0, 0, renderTarget.width, renderTarget.height, 0 );
-                //
-                return true;
             }
+            //
+            return true;
         }
 
         this.setSize = function(width, height) {

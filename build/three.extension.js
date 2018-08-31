@@ -639,7 +639,7 @@
 	        }
 	        //
 	        if(this.geometry.boundingSphere)
-	            this.boundingSphereWorld.expandBySphere(this.geometry.boundingSphere.clone().applyMatrix4(this.matrix));
+	            this.boundingSphere.expandBySphere(this.geometry.boundingSphere.clone().applyMatrix4(this.matrix));
 	    }
 	    //
 	    this.boundingComputed = true;
@@ -783,9 +783,16 @@
 	/**
 	 * 释放函数
 	 */
-	THREE.Object3D.prototype.dispose = function (gpuRelease = true, memRelease = true) {
+	THREE.Object3D.prototype.dispose = function (canDispose = true, gpuRelease = true, memRelease = true) {
+	    if(!canDispose) {
+	        for(let n=0, length = this.children.length; n<length; n++) {
+	            this.children[n].dispose(canDispose, gpuRelease, memRelease);
+	        }
+	        return;
+	    }
+	    //
 	    for(let n=0, length = this.children.length; n<length; n++) {
-	        this.children[n].dispose(gpuRelease, memRelease);
+	        this.children[n].dispose(canDispose, gpuRelease, memRelease);
 	        if(memRelease)
 	            this.children[n] = null;
 	    }
@@ -821,37 +828,48 @@
 	 * 更新函数，由渲染循环调用
 	 * @param {object} context -更新上下文参数
 	 */
-	THREE.Group.prototype.update = function (context, visibleMesh) {
-	    this.visible = true;
-	    let updatingChildren = [];
-	    let lookAt = context.lookAt ? context.lookAt : context.camera.matrixWorldInverse.getLookAt();
-	    for(let n=0, length = this.children.length; n<length; n++) {
-	        const bs = this.children[n].getBoundingSphereWorld();
-	        if(!bs.valid() || context.frustum.intersectsSphere(bs)) {
-	            this.children[n].visible = true;
-	            this.children[n].frustumCulled = false;
+
+	THREE.Group.prototype.update = function () {
+	    let updateChild = (child, context, updatingChildren, visibleMesh) => {
+	        const bs = child.getBoundingSphereWorld().clone();
+	        //
+	        if(child.update) {
+	            child.visible = true;
+	            child.frustumCulled = false;
 	            //
-	            if(visibleMesh && (this.children[n].isMesh || this.children[n].isLine || this.children[n].isPoints)) {
-	                visibleMesh[visibleMesh.length] = this.children[n];
-	            }
+	            child.update(context, visibleMesh);
 	        }
 	        else {
-	            this.children[n].visible = false;
-	        }
-	        //
-	        if(this.children[n].update) {
-	            if(!bs.valid() || !context.dataBasePager || !context.dataBasePager.cullGroup || context.frustum.intersectsSphere(bs)) {
-	                updatingChildren[updatingChildren.length] = {child:this.children[n], disToEye:lookAt.eye.clone().sub(bs.center).lengthSq()};
+	            if(!bs.valid() || context.frustum.intersectsSphere(bs)) {
+	                child.visible = true;
+	                child.frustumCulled = false;
+	                //
+	                if(visibleMesh && (child.isMesh || child.isLine || child.isPoints)) {
+	                    visibleMesh[visibleMesh.length] = child;
+	                }
 	            }
-	            //this.children[n].update(context, visibleMesh);
+	            else {
+	                child.visible = false;
+	            }
 	        }
-	    }
-	    //
-	    updatingChildren.sort((a,b)=> {return a.disToEye - b.disToEye});
-	    for(let n=0, length = updatingChildren.length; n<length; ++n) {
-	        updatingChildren[n].child.update(context, visibleMesh);
-	    }
-	};
+	    };
+	    return function (context, visibleMesh) {
+	        this.visible = true;
+	        this.frustumCulled = false;
+	        //
+	        let updatingChildren = [];
+	        for(let n=0, length = this.children.length;;) {
+	            if(n<length) {updateChild(this.children[n++], context, updatingChildren, visibleMesh);} else  break;
+	            if(n<length) {updateChild(this.children[n++], context, updatingChildren, visibleMesh);} else  break;
+	            if(n<length) {updateChild(this.children[n++], context, updatingChildren, visibleMesh);} else  break;
+	            if(n<length) {updateChild(this.children[n++], context, updatingChildren, visibleMesh);} else  break;
+	            if(n<length) {updateChild(this.children[n++], context, updatingChildren, visibleMesh);} else  break;
+	            if(n<length) {updateChild(this.children[n++], context, updatingChildren, visibleMesh);} else  break;
+	            if(n<length) {updateChild(this.children[n++], context, updatingChildren, visibleMesh);} else  break;
+	            if(n<length) {updateChild(this.children[n++], context, updatingChildren, visibleMesh);} else  break;
+	        }
+	    };
+	}();
 
 	/**
 	 * 射线相交测试
@@ -875,14 +893,24 @@
 	/**
 	 * 释放函数
 	 */
-	THREE.Mesh.prototype.dispose =  function(gpuRelease = true, memRelease = true) {
+	THREE.Mesh.prototype.dispose =  function(canDispose = true, gpuRelease = true, memRelease = true) {
+	    if(!canDispose) {
+	        for(let n=0, length = this.children.length; n<length; ++n) {
+	            this.children[n].dispose(canDispose, gpuRelease, memRelease);
+	        }
+	        return;
+	    }
+	    //
 	    if(this.geometry) {
 	        this.geometry.dispose();
 	        if(memRelease)
 	          this.geometry = null;
 	    }
 	    //
-	    if(this.material.isMaterial) {
+	    if(!this.material) {
+	        console.log('');
+	    }
+	    else if(this.material.isMaterial) {
 	        if(this.material && this.material.map instanceof  THREE.Texture){
 	            this.material.map.nReference--;
 	            if(this.material.map.nReference <= 0){
@@ -920,12 +948,21 @@
 	    }
 	    //
 	    for(let n=0, length = this.children.length; n<length; ++n) {
-	        this.children[n].dispose(gpuRelease, memRelease);
+	        this.children[n].dispose(canDispose, gpuRelease, memRelease);
 	    }
+	    //
+	    this.children = [];
 	};
 
 
-	THREE.Points.prototype.dispose = function(gpuRelease = true, memRelease = true) {
+	THREE.Points.prototype.dispose = function(canDispose = true, gpuRelease = true, memRelease = true) {
+	    if(!canDispose) {
+	        for(let n=0, length = this.children.length; n<length; ++n) {
+	            this.children[n].dispose(canDispose, gpuRelease, memRelease);
+	        }
+	        return;
+	    }
+	    //
 	    if(this.geometry) {
 	        this.geometry.dispose();
 	        if(memRelease)
@@ -948,11 +985,20 @@
 	    }
 	    //
 	    for(let n=0, length = this.children.length; n<length; ++n) {
-	        this.children[n].dispose(gpuRelease, memRelease);
+	        this.children[n].dispose(canDispose, gpuRelease, memRelease);
 	    }
+	    //
+	    this.children = [];
 	};
 
-	THREE.Line.prototype.dispose = function (gpuRelease = true, memRelease = true) {
+	THREE.Line.prototype.dispose = function (canDispose = true, gpuRelease = true, memRelease = true) {
+	    if(!canDispose) {
+	        for(let n=0, length = this.children.length; n<length; ++n) {
+	            this.children[n].dispose(canDispose, gpuRelease, memRelease);
+	        }
+	        return ;
+	    }
+	    //
 	    if(this.geometry) {
 	        this.geometry.dispose();
 	        if(memRelease)
@@ -975,8 +1021,10 @@
 	    }
 	    //
 	    for(let n=0, length = this.children.length; n<length; ++n) {
-	        this.children[n].dispose(gpuRelease, memRelease);
+	        this.children[n].dispose(canDispose, gpuRelease, memRelease);
 	    }
+	    //
+	    this.children = [];
 	};
 
 	/**
@@ -1650,8 +1698,13 @@
 	    var v1 = new THREE.Vector3();
 	    var v2 = new THREE.Vector3();
 
-	    return function update( context) {
-
+	    return function update( context, visibleMesh) {
+	        const bs = this.getBoundingSphereWorld().clone();
+	        if (bs.valid() && !context.frustum.intersectsSphere(bs)) {
+	            this.visible = false;
+	            return;
+	        }
+	        //
 	        var levels = this.levels;
 
 	        if(this.getRangeMode() === THREE.LOD.RangeMode.DISTANCE_FROM_EYE_POINT) {
@@ -1667,8 +1720,13 @@
 	                    //
 	                    if(distance >= levels[ i ].distance[0] && distance < levels[i].distance[1]) {
 	                        levels[i].object.visible = true;
+	                        //
+	                        if(levels[i].object.isMesh && visibleMesh) {
+	                            visibleMesh[visibleMesh.length] = levels[i].object;
+	                        }
+	                        //
 	                        if (levels[i].object.update) {
-	                            levels[i].object.update(context);
+	                            levels[i].object.update(context, visibleMesh);
 	                        }
 	                    }
 	                }
@@ -1682,6 +1740,14 @@
 	                //
 	                if(ss >= levels[ i ].distance[0] && ss < levels[i].distance[1]) {
 	                    levels[i].object.visible = true;
+	                    //
+	                    if(levels[i].object.isMesh && visibleMesh) {
+	                        visibleMesh[visibleMesh.length] = levels[i].object;
+	                    }
+	                    //
+	                    if (levels[i].object.update) {
+	                        levels[i].object.update(context, visibleMesh);
+	                    }
 	                }
 	            }
 	        }
@@ -1731,31 +1797,37 @@
 	     */
 	    this.enableRequestData = true;
 	    //
+	    this.loadRequest = [];
+	    //
 	    this._passedRequest_ = [];
-	    this.maxSortRequests = 0;
 	    this.cullGroup = false;
 	    //
 	    if(createWorker) {
 	        let loader = this;
-	        this.nodeLoadWorker = new Worker('../src/worker/nodeParserWorker.js');
-	        this.nodeLoadWorker.onmessage = function (massage) {
-	            --loader.loadingCount;
-	            //
-	            let node = massage.data;
-	            if(node) {
-	                let tmp = loader.loadedNodeCache.get(node.requestURL);
-	                if(!tmp) {
-	                    return;
-	                }
+	        this._worker_index_ = 0;
+	        this.nodeLoadWorker = [new Worker('../src/worker/nodeParserWorker.js'), new Worker('../src/worker/nodeParserWorker.js'),
+	            new Worker('../src/worker/nodeParserWorker.js'), new Worker('../src/worker/nodeParserWorker.js')];
+	        //
+	        for(let n=0, length = this.nodeLoadWorker.length; n<length; ++n) {
+	            this.nodeLoadWorker[n].onmessage = function (massage) {
+	                --loader.loadingCount;
 	                //
-	                if(node.children) {
-	                    loader.loadedNodeCache.set(node.requestURL, node);
+	                let node = massage.data;
+	                if(node) {
+	                    let tmp = loader.loadedNodeCache.get(node.requestURL);
+	                    if(!tmp) {
+	                        return;
+	                    }
+	                    //
+	                    if(node.children) {
+	                        loader.loadedNodeCache.set(node.requestURL, node);
+	                    }
+	                    else {
+	                        loader.loadedNodeCache.delete(node.requestURL);
+	                    }
 	                }
-	                else {
-	                    loader.loadedNodeCache.delete(node.requestURL);
-	                }
-	            }
-	        };
+	            };
+	        }
 	    }
 	    else {
 	        this.nodeLoadWorker = null;
@@ -1772,10 +1844,10 @@
 	/**
 	 * 请求数据
 	 * @param {string} url -所要求数据的url
-	 * @returns {boolean}
+	 * @returns {boolean}  -是否成功
 	 */
-	THREE.DataBasePager.prototype.load = function(url, frameNumber, force = false, weight = -1) {
-	    if(!this.enableRequestData) {
+	THREE.DataBasePager.prototype.load = function(url) {
+	    if(!this.enableRequestData || !url) {
 	        return false;
 	    }
 	    //
@@ -1784,88 +1856,57 @@
 	        return true;
 	    }
 	    //
-	    let loadUrl = "";
-	    //
-	    if(!force) {
-	        if(this.loadingCount > this.maxWaitingLoaded) {
-	            //console.log("too many load");
-	            if(this._passedRequest_.length > 0 && this._passedRequest_[0].frameNumber < frameNumber - 1) {
-	                this._passedRequest_.splice(0,1);
-	            }
-	            //
-	            for(let n=0, length = this._passedRequest_.length; n<length; ++n) {
-	                if(frameNumber > this._passedRequest_[n].frameNumber) {
-	                    continue;
-	                }
-	                else if(this._passedRequest_[n].weight < 0) {
-	                    continue;
-	                }
-	                else if(weight <= this._passedRequest_[n].weight) {
-	                    continue;
-	                }
-	                else {
-	                    this._passedRequest_.splice(n, 0, {url:url, frameNumber:frameNumber, weight:weight});
-	                    if(this._passedRequest_.length > this.maxSortRequests) {
-	                        this._passedRequest_.splice(this.maxSortRequests, 1);
-	                    }
-	                    return false;
-	                }
-	            }
-	            //
-	            if(this._passedRequest_.length < this.maxSortRequests) {
-	                this._passedRequest_[this._passedRequest_.length] = {url:url, frameNumber:frameNumber, weight:weight};
-	            }
-	            //
-	            return false;
-	        }
-	        //
-	        let numRemove = 0;
-	        while(numRemove < this._passedRequest_.length && this._passedRequest_[numRemove].frameNumber < frameNumber - 1) {
-	           ++numRemove;
-	        }
-	        this._passedRequest_.splice(0, numRemove);
-	        //
-	        if(this._passedRequest_.length > 0) {
-	            loadUrl = this._passedRequest_[0].url;
-	            this._passedRequest_.splice(0,1);
-	        }
-	        else {
-	            loadUrl = url;
-	        }
-	        //
-	        if(loadUrl !== url) {
-	            let inserted = false;
-	            for(let n=0, length = this._passedRequest_.length; n<length; ++n) {
-	                if(frameNumber > this._passedRequest_[n].frameNumber) {
-	                    continue;
-	                }
-	                else if(this._passedRequest_[n].weight < 0) {
-	                    continue;
-	                }
-	                else if(weight <= this._passedRequest_[n].weight) {
-	                    continue;
-	                }
-	                else {
-	                    this._passedRequest_.splice(n, 0, {url:url, frameNumber:frameNumber, weight:weight});
-	                    inserted = true;
-	                }
-	            }
-	            //
-	            if(!inserted) {
-	                this._passedRequest_[this._passedRequest_.length] = {url:url, frameNumber:frameNumber, weight:weight};
-	            }
-	        }
-	    }
-	    else {
-	        loadUrl = url;
-	    }
-	    //
-	    this.loadedNodeCache.set(loadUrl, {isPlaceholder: true});
+	    this.loadedNodeCache.set(url, {isPlaceholder: true});
 	    ++this.loadingCount;
-	    this.nodeLoadWorker.postMessage(loadUrl);
+	    this.nodeLoadWorker[this._worker_index_++].postMessage(url);
+	    this._worker_index_ = this._worker_index_ % this.nodeLoadWorker.length;
 	    return true;
 	};
 
+
+	THREE.DataBasePager.prototype.requestData = function (requests) {
+	    if(!this.enableRequestData) {
+	        return false;
+	    }
+	    //
+	    if(requests.length > 1 && !requests[requests.length-1].sorted) {
+	        requests.sort((a,b)=> {
+	            if(a.weight > 0 && b.weight > 0) {
+	                let ratio = a.weight/b.weight;
+	                if(ratio <= 0.5) {
+	                    return 1;
+	                }
+	                if(ratio >= 2) {
+	                    return -1;
+	                }
+	            }
+	            if(a.weight < 0 && b.weight > 0) {
+	                return -1;
+	            }
+	            if(a.weight > 0 && b.weight < 0) {
+	                return 1;
+	            }
+	            if(a.disToEye > 0 && b.disToEye > 0 && Math.abs(a.disToEye - b.disToEye) > 10) {
+	                return a.disToEye - b.disToEye;
+	            }
+	            //
+	            return a.level - b.level;
+	        });
+	        //
+	        requests[requests.length] = {sorted : true};
+	    }
+
+	    //console.log(requests);
+	    //
+	    for(; this.loadingCount<this.maxWaitingLoaded; ) {
+	        if(requests.length > 0) {
+	            this.load(requests[0].url, requests[0].frameNumber, true);
+	            requests.splice(0,1);
+	        }
+	        else
+	            break;
+	    }
+	};
 	/**
 	 * 将请求后的数据转换为 THREE.Object3D 对象
 	 * @param {Object} proxy -代表请求数据的中间数据
@@ -1874,7 +1915,7 @@
 	 * @param {THREE.Object3D} [node] -递归中间参数，不用指定
 	 * @param {Array} [meshes] -递归中间参数，不用指定
 	 * @param {Object} [textures] -递归中间参数，不用指定
-	 * @returns {THREE.Object3D}
+	 * @returns {THREE.Object3D}  -节点
 	 */
 	THREE.DataBasePager.prototype.proxyParse = function (proxy, node, meshes, textures) {
 	    if(meshes === undefined) {
@@ -1914,8 +1955,6 @@
 	                this.proxyParse(proxy.children[n], group, meshes, textures);
 	            }
 	        }
-	        //
-
 	    }
 	    //else if(proxy instanceof  PagedLodProxy) {
 	    else if(proxy.flag === 1) {
@@ -2042,15 +2081,26 @@
 	                    else {
 	                        let textureLoader = null;
 	                        let texture = null;
-	                        let netUrl = encodeURIComponent(proxy.material[n].texture.url);
-	                        if(netUrl.substr(-4, 4) === '.dds') {
-	                            textureLoader = new THREE.CompressedTextureLoader();
-	                            texture = textureLoader.load(proxy.material[n].texture.url, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+	                        if(proxy.material[n].texture.blobContent) {
+	                            let netUrl = URL.createObjectURL(proxy.material[n].texture.blobContent);
+	                            textureLoader = new THREE.TextureLoader();
+	                            texture = textureLoader.load(netUrl, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+	                            let isJPEG = proxy.material[n].texture.url.search( /\.(jpg|jpeg)$/ ) > 0 || url.search( /^data\:image\/jpeg/ ) === 0;
+	                            texture.format = isJPEG ? THREE.RGBFormat : THREE.RGBAFormat;
 	                        }
 	                        else {
-	                            textureLoader = new THREE.TextureLoader();
-	                            texture = textureLoader.load(proxy.material[n].texture.url, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+	                            let netUrl = proxy.material[n].texture.url;
+
+	                            if(netUrl.substr(-4, 4) === '.dds') {
+	                                textureLoader = new THREE.CompressedTextureLoader();
+	                                texture = textureLoader.load(netUrl, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+	                            }
+	                            else {
+	                                textureLoader = new THREE.TextureLoader();
+	                                texture = textureLoader.load(netUrl, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+	                            }
 	                        }
+	                        //
 	                        texture.wrapS = proxy.material[n].texture.wrapS;
 	                        texture.wrapT = proxy.material[n].texture.wrapT;
 	                        texture.minFilter = proxy.material[n].texture.minFilter;
@@ -2090,16 +2140,28 @@
 	                    }
 	                    else {
 	                        let textureLoader = null;
-	                        let netUrl = encodeURIComponent(proxy.material.texture.url);
 	                        let texture = null;
-	                        if(netUrl.substr(-4, 4) === '.dds') {
-	                            textureLoader = new THREE.CompressedTextureLoader();
-	                            texture = textureLoader.load(proxy.material.texture.url, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+
+	                        if(proxy.material.texture.blobContent) {
+	                            let netUrl = URL.createObjectURL(proxy.material.texture.blobContent);
+	                            textureLoader = new THREE.TextureLoader();
+	                            texture = textureLoader.load(netUrl, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+	                            let isJPEG = proxy.material.texture.url.search( /\.(jpg|jpeg)$/ ) > 0 || url.search( /^data\:image\/jpeg/ ) === 0;
+	                            texture.format = isJPEG ? THREE.RGBFormat : THREE.RGBAFormat;
 	                        }
 	                        else {
-	                            textureLoader = new THREE.TextureLoader();
-	                            texture = textureLoader.load(proxy.material.texture.url, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+	                            let netUrl = proxy.material.texture.url;
+
+	                            if(netUrl.substr(-4, 4) === '.dds') {
+	                                textureLoader = new THREE.CompressedTextureLoader();
+	                                texture = textureLoader.load(netUrl, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+	                            }
+	                            else {
+	                                textureLoader = new THREE.TextureLoader();
+	                                texture = textureLoader.load(netUrl, THREE.Texture.onTextureLoaded, undefined, THREE.Texture.onTextureLoadFailed);
+	                            }
 	                        }
+
 	                        texture.wrapS = proxy.material.texture.wrapS;
 	                        texture.wrapT = proxy.material.texture.wrapT;
 	                        texture.minFilter = proxy.material.texture.minFilter;
@@ -2197,7 +2259,7 @@
 
 	                }
 	                else if(!material.map.image) {
-	                    return {state:THREE.DataBasePager.TEX_STATE_LOADING};
+	                    return {state:THREE.DataBasePager.TEX_STATE.TEX_STATE_LOADING};
 	                }
 	                else if(material.map.image.failedLoad) {
 	                    if(onFailed) {
@@ -2222,7 +2284,7 @@
 
 	                    }
 	                    else if(!material[i].map.image) {
-	                        return {state:THREE.DataBasePager.TEX_STATE_LOADING};
+	                        return {state:THREE.DataBasePager.TEX_STATE.TEX_STATE_LOADING};
 	                    }
 	                    else if(material[i].map.image.failedLoad) {
 	                        if(onFailed) {
@@ -2306,8 +2368,12 @@
 	 * @param {string} url
 	 * @returns {boolean}
 	 */
-	THREE.PagedLod.prototype.loadChild = function (url, frameNumber, weight) {
-	    return this.dataBasePager.load(url, frameNumber, false, weight);
+	THREE.PagedLod.prototype.loadChild = function (url, frameNumber, level, disToEye, weight) {
+	    if(this.dataBasePager.loadRequest.length > 1000 && this._level_ > 6) {
+	        return;
+	    }
+	    this.dataBasePager.loadRequest[this.dataBasePager.loadRequest.length] = {url:url, frameNumber:frameNumber, level:level, disToEye:disToEye, weight};
+	    //return this.dataBasePager.load(url, frameNumber, false, weight);
 	};
 
 	/**
@@ -2321,18 +2387,26 @@
 	                this.dataBasePager.loadedNodeCache.delete(this.levels[i].url);
 	                this.dataBasePager.loadingTextureCache.delete(this.levels[i].url);
 	                this.dataBasePager.parsedNodeCache.delete(this.levels[i].url);
+	                //
+	                this.levels[i].lastVisitFrame = 0;
 	            }
+
 	            for(; n<this.children.length;) {
-	                this.children[n].dispose();
-	                this.children[n] = null;
-	                this.children.splice(n, 1);
+	                let canDispose = this.levels[n].url.length > 0 ? true : false;
+	                this.children[n].dispose(canDispose);
+	                if(canDispose) {
+	                    this.children[n] = null;
+	                    this.children.splice(n, 1);
+	                }
+	                else {
+	                    n++;
+	                }
 	            }
 	            //
 	            break;
 	        }
-	        else if(n < this.children.length){
-	            if(this.children[n].removeUnExpectedChild)
-	                this.children[n].removeUnExpectedChild(maxFrameCount);
+	        else if(n < this.children.length && this.children[n].removeUnExpectedChild){
+	            this.children[n].removeUnExpectedChild(maxFrameCount);
 	        }
 	    }
 	};
@@ -2343,10 +2417,22 @@
 	 * @param {object} context -更新上下文参数
 	 */
 	THREE.PagedLod.prototype.update = function (context, visibleMesh) {
+	    if(this._level_) {
+	        context.currentLevel = this._level_;
+	    } else if(context.currentLevel !== undefined) {
+	        this._level_ = context.currentLevel++;
+	    }
+	    else {
+	        this._level_ = 0;
+	        context.currentLevel = 0;
+	    }
+	    //
 	    let camera = context.camera;
 	    let frustum = context.frustum;
 	    //
 	    const bs = this.getBoundingSphereWorld().clone();
+	    const disToEye = bs.valid() ? bs.center.clone().distanceTo(context.camera.position) : -1;
+	    //
 	    if(!bs.valid() || frustum.intersectsSphere(bs)) {
 	        this.frustumCulled = false;
 	        this.visible = true;
@@ -2354,9 +2440,7 @@
 	    else {
 	        this.visible = false;
 	        for(let n = 0, length = this.levels.length; n<length; ++n) {
-	            if(this.levels[n].url.length > 0) {
-	                this.levels[n].lastVisitFrame++;
-	            }
+	            this.levels[n].lastVisitFrame++;
 	        }
 	        return;
 	    }
@@ -2366,17 +2450,21 @@
 	    }
 	    //
 	    let dis = 0;
+	    let screenPixelSize = 0;
 	    let rangeMode = this.getRangeMode();
 	    if(rangeMode === THREE.LOD.RangeMode.DISTANCE_FROM_EYE_POINT) {
 	        const v1 = new THREE.Vector3();
 	        const v2 = bs.center.clone();
 	        v1.setFromMatrixPosition( camera.matrixWorld );
 	        dis = v1.distanceTo( v2 );
+	        //
+	        screenPixelSize = Math.abs(bs.radius/(bs.center.dot(camera.pixelSizeVector) + camera.pixelSizeVector.w));
 	    }
 	    else if(rangeMode === THREE.LOD.RangeMode.PIXEL_SIZE_ON_SCREEN) {
 	        dis = Math.abs(bs.radius/(bs.center.dot(camera.pixelSizeVector) + camera.pixelSizeVector.w));
 	        //
 	        dis*=this.dataBasePager.pageScaleFunc(context, this);
+	        screenPixelSize = dis;
 	    }
 	    //
 	    let visibleObj = [];
@@ -2463,14 +2551,22 @@
 	                    afterFailed();
 	                    break;
 	                }
+	                else if(textureState.state === THREE.DataBasePager.TEX_STATE.TEX_STATE_LOADING) {
+	                    afterFailed();
+	                    //
+	                    break;
+	                }
 	                else {
+	                    console.log("texture state error");
+	                    //
+	                    this.dataBasePager.parsedNodeCache.delete(this.levels[i].url);
 	                    afterFailed();
 	                    //
 	                    break;
 	                }
 	            }
 	            else {
-	                this.loadChild(this.levels[i].url, context.numFrame, dis);
+	                this.loadChild(this.levels[i].url, context.numFrame, this._level_, disToEye, screenPixelSize);
 	                //
 	                if(i>0) {
 	                    if(rangeMode === THREE.LOD.RangeMode.PIXEL_SIZE_ON_SCREEN ? this.levels[i].sps[0] >= this.levels[i - 1].sps[1] : this.levels[i].sps[1] <= this.levels[i - 1].sps[0]) {
@@ -2561,13 +2657,18 @@
 	                        afterFailed();
 	                        break;
 	                    }
+	                    else if(textureState.state === THREE.DataBasePager.TEX_STATE.TEX_STATE_LOADING) {
+	                        afterFailed();
+	                        //
+	                        break;
+	                    }
 	                    else {
 	                        afterFailed();
 	                        break;
 	                    }
 	                }
 	                else {
-	                    this.loadChild(this.levels[i].url, context.numFrame, dis);
+	                    this.loadChild(this.levels[i].url, context.numFrame, this._level_, disToEye, screenPixelSize);
 	                    //
 	                    if(i>0) {
 	                        if(rangeMode === THREE.LOD.RangeMode.PIXEL_SIZE_ON_SCREEN ? this.levels[i].sps[0] >= this.levels[i - 1].sps[1] : this.levels[i].sps[1] <= this.levels[i - 1].sps[0]) {
@@ -2588,8 +2689,12 @@
 	        else {
 	            if(i === 0) {
 	                this.visible = false;
-	                return;
 	            }
+	            //
+	            for(;i<this.levels.length; ++i) {
+	                this.levels[i].lastVisitFrame++;
+	            }
+	            //
 	            break;
 	        }
 	    }
@@ -2598,70 +2703,40 @@
 	        visibleObj=[{obj:this.children[lastValidLevel], level:lastValidLevel, needUpdate:false}];
 	    }
 	    //
-	    for(let n=targetLevel + 1, length = this.levels.length; n<length; ++n) {
-	        this.levels[n].lastVisitFrame++;
-	    }
-	    //
-	    let lookAt = context.lookAt ? context.lookAt : camera.matrixWorldInverse.getLookAt();
-	    let updatingChildren = [];
-	    //
-	    for(let n=0, length = visibleObj.length; n<length; ++n) {
-	        if(visibleObj[n].obj.visible)
-	            continue;
+	    let checkChild = (visibleObj)=> {
+	        if(visibleObj.obj.visible)
+	            return;
 	        //
-	        if(visibleObj[n].obj.isPagedLod){
-	            let bs = visibleObj[n].obj.getBoundingSphereWorld();
-	            if(frustum.intersectsSphere(bs)) {
-	                visibleObj[n].obj.visible = true;
-	                visibleObj[n].obj.frustumCulled = false;
-	                //
-	                if(visibleObj[n].needUpdate) {
-	                    updatingChildren[updatingChildren.length] = {child:visibleObj[n].obj, disToEye:lookAt.eye.clone().sub(bs.center).lengthSq()};
-	                    //visibleObj[n].obj.update(context, visibleMesh);
-	                }
-	                else {
-	                    if(visibleMesh) {
-	                        visibleMesh[visibleMesh.length] = visibleObj[n].obj;
-	                    }
-	                }
-	            }
-	            else {
-	                visibleObj[n].obj.visible = false;
-	            }
-	        }
-	        else if(visibleObj[n].obj.isGroup){
-	            let bs = visibleObj[n].obj.getBoundingSphereWorld();
-	            if(!bs.valid() || frustum.intersectsSphere(bs)) {
-	                visibleObj[n].obj.visible = true;
-	                visibleObj[n].obj.frustumCulled = false;
-	                //
-	                if(visibleObj[n].needUpdate) {
-	                    updatingChildren[updatingChildren.length] = {child:visibleObj[n].obj, disToEye:lookAt.eye.clone().sub(bs.center).lengthSq()};
-	                    //visibleObj[n].obj.update(context, visibleMesh);
-	                }
-	                else {
-	                    if(visibleMesh) {
-	                        visibleMesh[visibleMesh.length] = visibleObj[n].obj;
-	                    }
-	                }
-	            }
-	            else {
-	                visibleObj[n].obj.visible = false;
-	            }
-	        }
-	        else if(visibleObj[n].obj.isMesh){
-	            visibleObj[n].obj.visible = true;
-	            visibleObj[n].obj.frustumCulled = false;
+	        const bs = visibleObj.obj.getBoundingSphereWorld().clone();
+	        //
+	        if(visibleObj.obj.update && visibleObj.needUpdate) {
+	            visibleObj.obj.visible = true;
+	            visibleObj.obj.frustumCulled = false;
 	            //
-	            if(visibleMesh) {
-	                visibleMesh[visibleMesh.length] = visibleObj[n].obj;
+	            child:visibleObj.obj.update(context, visibleMesh);
+	        }
+	        else {
+	            if(!bs.valid() || context.frustum.intersectsSphere(bs)) {
+	                visibleObj.obj.visible = true;
+	                visibleObj.obj.frustumCulled = false;
+	                //
+	                if(visibleMesh) {
+	                    visibleMesh[visibleMesh.length] = visibleObj.obj;
+	                }
+	            }
+	            else {
+	                visibleObj.obj.visible = false;
 	            }
 	        }
-	    }
-	    //
-	    updatingChildren.sort((a,b)=>{return a.disToEye - b.disToEye});
-	    for(let n=0, length = updatingChildren.length; n<length; ++n) {
-	        updatingChildren[n].child.update(context, visibleMesh);
+	    };
+	    for(let n=0, length = visibleObj.length; ;) {
+	        if(n<length) {checkChild(visibleObj[n++]);} else break;
+	        if(n<length) {checkChild(visibleObj[n++]);} else break;
+	        if(n<length) {checkChild(visibleObj[n++]);} else break;
+	        if(n<length) {checkChild(visibleObj[n++]);} else break;
+	        if(n<length) {checkChild(visibleObj[n++]);} else break;
+	        if(n<length) {checkChild(visibleObj[n++]);} else break;
+	        if(n<length) {checkChild(visibleObj[n++]);} else break;
 	    }
 	    //
 	    visibleObj = null;
@@ -2671,17 +2746,36 @@
 	/**
 	 * 清除函数
 	 */
-	THREE.PagedLod.prototype.dispose = function () {
+	THREE.PagedLod.prototype.dispose = function (canDispose) {
 	    for(let n=0, length = this.levels.length; n<length; ++n) {
 	        this.dataBasePager.loadedNodeCache.delete(this.levels[n].url);
 	        this.dataBasePager.loadingTextureCache.delete(this.levels[n].url);
 	        this.dataBasePager.parsedNodeCache.delete(this.levels[n].url);
 	    }
-	    for(let n=0, length = this.children.length; n<length; n++) {
-	        this.children[n].dispose();
-	        this.children[n] = null;
+	    //
+	    if(canDispose) {
+	        for(let n=0, length = this.children.length; n<length; n++) {
+	            this.children[n].dispose(true);
+	            this.children[n] = null;
+	        }
+	        //
+	        this.children = [];
 	    }
-	    this.children = [];
+	    else {
+	        let removable = [];
+	        for(let n=0, length = this.children.length; n<length; n++) {
+	            let canDispose = this.levels[n].url.length > 0 ? true : false;
+	            this.children[n].dispose(canDispose);
+	            if(canDispose) {
+	                removable[removable.length] = this.children[n];
+	            }
+	        }
+	        //
+	        for(let n=0, length = removable.length; n<length; ++n) {
+	            this.remove(removable[n]);
+	        }
+	        removable = null;
+	    }
 	};
 
 	/**
@@ -2730,7 +2824,7 @@
 	};
 	/**
 	 * 移除代理数据
-	 * @param fileName
+	 * @param {string} fileName -文件名
 	 */
 	THREE.ProxyNode.prototype.removeFileName = function (fileName) {
 	    for(let n=0, length = this.fileNameList.length; n<length; ++n) {
@@ -2747,8 +2841,8 @@
 	};
 	/**
 	 * 显示/隐藏 代理数据
-	 * @param fileName
-	 * @param visible
+	 * @param {string} fileName -文件名
+	 * @param {bool} visible -可见性
 	 */
 	THREE.ProxyNode.prototype.setVisible = function(fileName, visible) {
 	    if(!fileName) {
@@ -2768,8 +2862,8 @@
 	};
 	/**
 	 * 判断代理数据是否可见
-	 * @param fileName
-	 * @return {*}
+	 * @param {string} fileName -文件名
+	 * @return {bool} -可见性
 	 */
 	THREE.ProxyNode.prototype.getVisible = function (fileName) {
 	    if(!this.fileName) {
@@ -2786,7 +2880,7 @@
 	/**
 	 * 获取指定位置的代理文件 url
 	 * @param {number} childNo -索引编号
-	 * @return {string}
+	 * @return {string}  -文件名
 	 */
 	THREE.ProxyNode.prototype.getFileName = function (childNo) {
 	    if(this.fileNameList.length > childNo) {
@@ -2797,7 +2891,7 @@
 	};
 	/**
 	 * 获取代理文件个数
-	 * @return {number}
+	 * @return {number}  -文件个数
 	 */
 	THREE.ProxyNode.prototype.getNumFileNames = function () {
 	    return this.fileNameList.length;
@@ -2807,80 +2901,110 @@
 	 * @param {string} url -代理文件 url
 	 * @return {boolean} -失败返回 false
 	 */
-	THREE.ProxyNode.prototype.loadChild = function (url, frameNumber) {
-	    return this.dataBasePager.load(url, frameNumber, this.forceRootLoad);
+	THREE.ProxyNode.prototype.loadChild = function (url, frameNumber, level, disToEye, weight) {
+	    //return this.dataBasePager.load(url, frameNumber, this.forceRootLoad);
+	    this.dataBasePager.loadRequest[this.dataBasePager.loadRequest.length] = {url:url, frameNumber:frameNumber, level:level, disToEye:disToEye, weight:weight};
 	};
 
-	THREE.ProxyNode.prototype.update = function (context, visibleMesh) {
-	    for(let i=0, length = this.fileNameList.length; i<length; i++) {
-	        if(!this.fileNameList[i].visible || this.fileNameList[i].dataIndex >= 0)
-	            continue;
+	THREE.ProxyNode.prototype.update = function () {
+	    let updateChild = function (fileInfo, children, context, visibleMesh) {
+	        if (!fileInfo.visible || fileInfo.dataIndex < 0 || !children[fileInfo.dataIndex].parent)
+	            return;
 	        //
-	        if(this.dataBasePager.loadedNodeCache.has(this.fileNameList[i].fileName)) {
-	            let loadedNode = this.dataBasePager.loadedNodeCache.get(this.fileNameList[i].fileName);
-	            if(loadedNode.isPlaceholder) {
-
+	        let child = children[fileInfo.dataIndex];
+	        if(child.update) {
+	            child.update(context, visibleMesh);
+	        }
+	        else {
+	            let bs = child.getBoundingSphereWorld();
+	            if(!bs.valid() || context.frustum.intersectsSphere(bs)) {
+	                child.visible = true;
+	                child.frustumCulled = false;
+	                //
+	                if(visibleMesh && (child.isMesh || child.isLine || child.isPoints)) {
+	                    visibleMesh[visibleMesh.length] = child;
+	                }
 	            }
 	            else {
-	                let parsedNode = this.dataBasePager.proxyParse(loadedNode);
-	                this.dataBasePager.loadedNodeCache.delete(this.fileNameList[i].fileName);
-	                this.dataBasePager.parsedNodeCache.set(this.fileNameList[i].fileName, parsedNode.children[0]);
+	                child.visible = false;
 	            }
-	            continue;
 	        }
-	        else if(this.dataBasePager.parsedNodeCache.has(this.fileNameList[i].fileName)) {
-	            let textureState = this.dataBasePager.checkCacheReady(this.fileNameList[i].fileName, context.onTextureLoadFailed);
-	            if(textureState.state === THREE.DataBasePager.TEX_STATE.TEX_STATE_READY) {
-	                let node = this.dataBasePager.parsedNodeCache.get(this.fileNameList[i].fileName);
-	                if(node) {
-	                    for(let n=0, numChildren = this.children.length; n<numChildren; ++n) {
-	                        if(!this.children[n].parent) {
-	                            if(node.parent)
-	                                node.parent.remove(node);
-	                            this.children[n] = node;
-	                            node.parent = this;
+	    };
+	    return function (context, visibleMesh) {
+	        if(this._level_) {
+	            context.currentLevel = this._level_;
+	        } else if(context.currentLevel !== undefined) {
+	            this._level_ = context.currentLevel++;
+	        }
+	        else {
+	            this._level_ = 0;
+	            context.currentLevel = 0;
+	        }
+	        //
+	        for(let i=0, length = this.fileNameList.length; i<length; i++) {
+	            if(!this.fileNameList[i].visible || this.fileNameList[i].dataIndex >= 0)
+	                continue;
+	            //
+	            if(this.dataBasePager.loadedNodeCache.has(this.fileNameList[i].fileName)) {
+	                let loadedNode = this.dataBasePager.loadedNodeCache.get(this.fileNameList[i].fileName);
+	                if(loadedNode.isPlaceholder) {
+
+	                }
+	                else {
+	                    let parsedNode = this.dataBasePager.proxyParse(loadedNode);
+	                    this.dataBasePager.loadedNodeCache.delete(this.fileNameList[i].fileName);
+	                    this.dataBasePager.parsedNodeCache.set(this.fileNameList[i].fileName, parsedNode.children[0]);
+	                }
+	                continue;
+	            }
+	            else if(this.dataBasePager.parsedNodeCache.has(this.fileNameList[i].fileName)) {
+	                let textureState = this.dataBasePager.checkCacheReady(this.fileNameList[i].fileName, context.onTextureLoadFailed);
+	                if(textureState.state === THREE.DataBasePager.TEX_STATE.TEX_STATE_READY) {
+	                    let node = this.dataBasePager.parsedNodeCache.get(this.fileNameList[i].fileName);
+	                    if(node) {
+	                        for(let n=0, numChildren = this.children.length; n<numChildren; ++n) {
+	                            if(!this.children[n].parent) {
+	                                if(node.parent)
+	                                    node.parent.remove(node);
+	                                this.children[n] = node;
+	                                node.parent = this;
+	                                node.updateMatrixWorld();
+	                                this.fileNameList[i].dataIndex = n;
+	                                break;
+	                            }
+	                        }
+	                        //
+	                        if(this.fileNameList[i].dataIndex < 0) {
+	                            this.add(node);
 	                            node.updateMatrixWorld();
-	                            this.fileNameList[i].dataIndex = n;
-	                            break;
+	                            this.fileNameList[i].dataIndex = this.children.length - 1;
+	                            if(this.children.length > this.fileNameList.length) {
+	                                console.log("proxynode error");
+	                            }
 	                        }
 	                    }
 	                    //
-	                    if(this.fileNameList[i].dataIndex < 0) {
-	                        this.add(node);
-	                        node.updateMatrixWorld();
-	                        this.fileNameList[i].dataIndex = this.children.length - 1;
-	                        if(this.children.length > this.fileNameList.length) {
-	                            console.log("proxynode error");
-	                        }
-	                    }
+	                    this.dataBasePager.parsedNodeCache.delete(this.fileNameList[i].fileName);
 	                }
-	                //
-	                this.dataBasePager.parsedNodeCache.delete(this.fileNameList[i].fileName);
+	                continue;
 	            }
-	            continue;
+	            else if(this.fileNameList[i].dataIndex < 0){
+	                this.loadChild(this.fileNameList[i].fileName, context.numFrame, this._level_, -1, -1);
+	            }
 	        }
-	        else if(this.fileNameList[i].dataIndex < 0){
-	            this.loadChild(this.fileNameList[i].fileName, context.numFrame);
-	        }
-	    }
-	    //
-	    let updatingChildren = [];
-	    let lookAt = context.lookAt ? context.lookAt : context.camera.matrixWorldInverse.getLookAt();
-	    for(let i=0, length = this.fileNameList.length; i<length; i++) {
-	        if (!this.fileNameList[i].visible || this.fileNameList[i].dataIndex < 0 || !this.children[this.fileNameList[i].dataIndex].parent)
-	            continue;
 	        //
-	        let child = this.children[this.fileNameList[i].dataIndex];
-	        let bs = child.getBoundingSphereWorld();
-	        updatingChildren[updatingChildren.length] = {child:child, disToEye:lookAt.eye.clone().sub(bs.center).lengthSq()};
-	        //this.children[i].update(context);
+	        for(let i=0, length = this.fileNameList.length; ; ) {
+	            if(i < length) {updateChild(this.fileNameList[i++], this.children, context, visibleMesh);} else break;
+	            if(i < length) {updateChild(this.fileNameList[i++], this.children, context, visibleMesh);} else break;
+	            if(i < length) {updateChild(this.fileNameList[i++], this.children, context, visibleMesh);} else break;
+	            if(i < length) {updateChild(this.fileNameList[i++], this.children, context, visibleMesh);} else break;
+	            if(i < length) {updateChild(this.fileNameList[i++], this.children, context, visibleMesh);} else break;
+	            if(i < length) {updateChild(this.fileNameList[i++], this.children, context, visibleMesh);} else break;
+	            if(i < length) {updateChild(this.fileNameList[i++], this.children, context, visibleMesh);} else break;
+	            if(i < length) {updateChild(this.fileNameList[i++], this.children, context, visibleMesh);} else break;
+	        }
 	    }
-	    //
-	    updatingChildren.sort((a,b)=>{return a.disToEye - b.disToEye});
-	    for(let i=0, length = updatingChildren.length; i<length; ++i) {
-	        updatingChildren[i].child.update(context, visibleMesh);
-	    }
-	};
+	}();
 
 	THREE.ProxyNode.prototype.removeUnExpected = function() {
 	    for(let i=0, length = this.children.length; i<length; ++i) {
@@ -3036,6 +3160,79 @@
 
 	    vertexShader: THREE.ShaderChunk.meshbasic_vert,
 	    fragmentShader: THREE.ShaderChunk.meshbasic_frag
+	};
+
+	THREE.ShaderChunk.points_vert = [
+	    'uniform float size;',
+	    'uniform float scale;',
+
+	    '#include <common>',
+	    '#include <color_pars_vertex>',
+	    '#include <fog_pars_vertex>',
+	    '#include <morphtarget_pars_vertex>',
+	    '#include <logdepthbuf_pars_vertex>',
+	    '#include <clipping_planes_pars_vertex>',
+
+	    'void main() {',
+
+	    '	#include <color_vertex>',
+	    '	#include <begin_vertex>',
+	    '	#include <morphtarget_vertex>',
+	    '	#include <project_vertex>',
+
+	    '	#ifdef USE_SIZEATTENUATION',
+	    '		gl_PointSize = size * ( scale / - mvPosition.z );',
+	    '	#else',
+	    '		gl_PointSize = size;',
+	    '	#endif',
+
+	    '	#include <logdepthbuf_vertex>',
+	    '	#include <clipping_planes_vertex>',
+	    '	#include <worldpos_vertex>',
+	    '	#include <fog_vertex>',
+
+	    '}',
+	].join('\n');
+
+	THREE.ShaderChunk.points_frag = [
+	    'uniform vec3 diffuse;',
+	    'uniform float opacity;',
+	    '#include <common>',
+	    '#include <packing>',
+	    '#include <color_pars_fragment>',
+	    '#include <map_particle_pars_fragment>',
+	    '#include <fog_pars_fragment>',
+	    '#include <logdepthbuf_pars_fragment>',
+	    '#include <clipping_planes_pars_fragment>',
+	    'void main() {',
+	    '  float dist = distance(gl_PointCoord, vec2(0.5,0.5));',
+	    '  if(dist > 0.5){',
+	    '  discard;}',
+	    '	#include <clipping_planes_fragment>',
+	    '	vec3 outgoingLight = vec3( 0.0 );',
+	    '	vec4 diffuseColor = vec4( diffuse, opacity );',
+	    '	#include <logdepthbuf_fragment>',
+	    '	#include <map_particle_fragment>',
+	    '	#include <color_fragment>',
+	    '	#include <alphatest_fragment>',
+	    '	outgoingLight = diffuseColor.rgb;',
+	    '	gl_FragColor = vec4( outgoingLight, diffuseColor.a );',
+	    '	#include <premultiplied_alpha_fragment>',
+	    '	#include <tonemapping_fragment>',
+	    '	#include <encodings_fragment>',
+	    '	#include <fog_fragment>',
+	    '}',
+	].join('\n');
+
+
+	THREE.ShaderLib.points = {
+	    uniforms: THREE.UniformsUtils.merge( [
+	        THREE.UniformsLib.points,
+	        THREE.UniformsLib.fog
+	    ] ),
+
+	    vertexShader: THREE.ShaderChunk.points_vert,
+	    fragmentShader: THREE.ShaderChunk.points_frag
 	};
 
 	/**

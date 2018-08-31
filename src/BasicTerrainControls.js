@@ -179,6 +179,7 @@ class BasicTerrainControls extends  WindowEventListener {
                 //
                 let transform = tranMatrix0.premultiply(rotateMatrix0).premultiply(tranMatrix1);
                 transform.premultiply(this.viewer.camera.matrixWorldInverse);
+                //
                 let camMatrix = new THREE.Matrix4();
                 camMatrix.getInverse(transform);
                 camMatrix.decompose(pos, q, s);

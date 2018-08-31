@@ -26,3 +26,5 @@ THREE.WebGLRenderer.prototype.supportMaterialStencil = function () {
         this.setPolygonOffset( material.polygonOffset, material.polygonOffsetFactor, material.polygonOffsetUnits );
     };
 };
+
+

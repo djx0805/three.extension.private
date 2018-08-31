@@ -44,7 +44,7 @@ THREE.ProxyNode.prototype.addFileName = function (fileName) {
 };
 /**
  * 移除代理数据
- * @param fileName
+ * @param {string} fileName -文件名
  */
 THREE.ProxyNode.prototype.removeFileName = function (fileName) {
     for(let n=0, length = this.fileNameList.length; n<length; ++n) {
@@ -61,8 +61,8 @@ THREE.ProxyNode.prototype.removeFileName = function (fileName) {
 }
 /**
  * 显示/隐藏 代理数据
- * @param fileName
- * @param visible
+ * @param {string} fileName -文件名
+ * @param {bool} visible -可见性
  */
 THREE.ProxyNode.prototype.setVisible = function(fileName, visible) {
     if(!fileName) {
@@ -82,8 +82,8 @@ THREE.ProxyNode.prototype.setVisible = function(fileName, visible) {
 }
 /**
  * 判断代理数据是否可见
- * @param fileName
- * @return {*}
+ * @param {string} fileName -文件名
+ * @return {bool} -可见性
  */
 THREE.ProxyNode.prototype.getVisible = function (fileName) {
     if(!this.fileName) {
@@ -100,7 +100,7 @@ THREE.ProxyNode.prototype.getVisible = function (fileName) {
 /**
  * 获取指定位置的代理文件 url
  * @param {number} childNo -索引编号
- * @return {string}
+ * @return {string}  -文件名
  */
 THREE.ProxyNode.prototype.getFileName = function (childNo) {
     if(this.fileNameList.length > childNo) {
@@ -111,7 +111,7 @@ THREE.ProxyNode.prototype.getFileName = function (childNo) {
 };
 /**
  * 获取代理文件个数
- * @return {number}
+ * @return {number}  -文件个数
  */
 THREE.ProxyNode.prototype.getNumFileNames = function () {
     return this.fileNameList.length;
@@ -121,80 +121,110 @@ THREE.ProxyNode.prototype.getNumFileNames = function () {
  * @param {string} url -代理文件 url
  * @return {boolean} -失败返回 false
  */
-THREE.ProxyNode.prototype.loadChild = function (url, frameNumber) {
-    return this.dataBasePager.load(url, frameNumber, this.forceRootLoad);
+THREE.ProxyNode.prototype.loadChild = function (url, frameNumber, level, disToEye, weight) {
+    //return this.dataBasePager.load(url, frameNumber, this.forceRootLoad);
+    this.dataBasePager.loadRequest[this.dataBasePager.loadRequest.length] = {url:url, frameNumber:frameNumber, level:level, disToEye:disToEye, weight:weight};
 };
 
-THREE.ProxyNode.prototype.update = function (context, visibleMesh) {
-    for(let i=0, length = this.fileNameList.length; i<length; i++) {
-        if(!this.fileNameList[i].visible || this.fileNameList[i].dataIndex >= 0)
-            continue;
+THREE.ProxyNode.prototype.update = function () {
+    let updateChild = function (fileInfo, children, context, visibleMesh) {
+        if (!fileInfo.visible || fileInfo.dataIndex < 0 || !children[fileInfo.dataIndex].parent)
+            return;
         //
-        if(this.dataBasePager.loadedNodeCache.has(this.fileNameList[i].fileName)) {
-            let loadedNode = this.dataBasePager.loadedNodeCache.get(this.fileNameList[i].fileName);
-            if(loadedNode.isPlaceholder) {
-
+        let child = children[fileInfo.dataIndex];
+        if(child.update) {
+            child.update(context, visibleMesh);
+        }
+        else {
+            let bs = child.getBoundingSphereWorld();
+            if(!bs.valid() || context.frustum.intersectsSphere(bs)) {
+                child.visible = true;
+                child.frustumCulled = false;
+                //
+                if(visibleMesh && (child.isMesh || child.isLine || child.isPoints)) {
+                    visibleMesh[visibleMesh.length] = child;
+                }
             }
             else {
-                let parsedNode = this.dataBasePager.proxyParse(loadedNode);
-                this.dataBasePager.loadedNodeCache.delete(this.fileNameList[i].fileName);
-                this.dataBasePager.parsedNodeCache.set(this.fileNameList[i].fileName, parsedNode.children[0]);
+                child.visible = false;
             }
-            continue;
         }
-        else if(this.dataBasePager.parsedNodeCache.has(this.fileNameList[i].fileName)) {
-            let textureState = this.dataBasePager.checkCacheReady(this.fileNameList[i].fileName, context.onTextureLoadFailed);
-            if(textureState.state === THREE.DataBasePager.TEX_STATE.TEX_STATE_READY) {
-                let node = this.dataBasePager.parsedNodeCache.get(this.fileNameList[i].fileName);
-                if(node) {
-                    for(let n=0, numChildren = this.children.length; n<numChildren; ++n) {
-                        if(!this.children[n].parent) {
-                            if(node.parent)
-                                node.parent.remove(node);
-                            this.children[n] = node;
-                            node.parent = this;
+    };
+    return function (context, visibleMesh) {
+        if(this._level_) {
+            context.currentLevel = this._level_;
+        } else if(context.currentLevel !== undefined) {
+            this._level_ = context.currentLevel++;
+        }
+        else {
+            this._level_ = 0;
+            context.currentLevel = 0;
+        }
+        //
+        for(let i=0, length = this.fileNameList.length; i<length; i++) {
+            if(!this.fileNameList[i].visible || this.fileNameList[i].dataIndex >= 0)
+                continue;
+            //
+            if(this.dataBasePager.loadedNodeCache.has(this.fileNameList[i].fileName)) {
+                let loadedNode = this.dataBasePager.loadedNodeCache.get(this.fileNameList[i].fileName);
+                if(loadedNode.isPlaceholder) {
+
+                }
+                else {
+                    let parsedNode = this.dataBasePager.proxyParse(loadedNode);
+                    this.dataBasePager.loadedNodeCache.delete(this.fileNameList[i].fileName);
+                    this.dataBasePager.parsedNodeCache.set(this.fileNameList[i].fileName, parsedNode.children[0]);
+                }
+                continue;
+            }
+            else if(this.dataBasePager.parsedNodeCache.has(this.fileNameList[i].fileName)) {
+                let textureState = this.dataBasePager.checkCacheReady(this.fileNameList[i].fileName, context.onTextureLoadFailed);
+                if(textureState.state === THREE.DataBasePager.TEX_STATE.TEX_STATE_READY) {
+                    let node = this.dataBasePager.parsedNodeCache.get(this.fileNameList[i].fileName);
+                    if(node) {
+                        for(let n=0, numChildren = this.children.length; n<numChildren; ++n) {
+                            if(!this.children[n].parent) {
+                                if(node.parent)
+                                    node.parent.remove(node);
+                                this.children[n] = node;
+                                node.parent = this;
+                                node.updateMatrixWorld();
+                                this.fileNameList[i].dataIndex = n;
+                                break;
+                            }
+                        }
+                        //
+                        if(this.fileNameList[i].dataIndex < 0) {
+                            this.add(node);
                             node.updateMatrixWorld();
-                            this.fileNameList[i].dataIndex = n;
-                            break;
+                            this.fileNameList[i].dataIndex = this.children.length - 1;
+                            if(this.children.length > this.fileNameList.length) {
+                                console.log("proxynode error");
+                            }
                         }
                     }
                     //
-                    if(this.fileNameList[i].dataIndex < 0) {
-                        this.add(node);
-                        node.updateMatrixWorld();
-                        this.fileNameList[i].dataIndex = this.children.length - 1;
-                        if(this.children.length > this.fileNameList.length) {
-                            console.log("proxynode error");
-                        }
-                    }
+                    this.dataBasePager.parsedNodeCache.delete(this.fileNameList[i].fileName);
                 }
-                //
-                this.dataBasePager.parsedNodeCache.delete(this.fileNameList[i].fileName);
+                continue;
             }
-            continue;
+            else if(this.fileNameList[i].dataIndex < 0){
+                this.loadChild(this.fileNameList[i].fileName, context.numFrame, this._level_, -1, -1);
+            }
         }
-        else if(this.fileNameList[i].dataIndex < 0){
-            this.loadChild(this.fileNameList[i].fileName, context.numFrame);
-        }
-    }
-    //
-    let updatingChildren = [];
-    let lookAt = context.lookAt ? context.lookAt : context.camera.matrixWorldInverse.getLookAt();
-    for(let i=0, length = this.fileNameList.length; i<length; i++) {
-        if (!this.fileNameList[i].visible || this.fileNameList[i].dataIndex < 0 || !this.children[this.fileNameList[i].dataIndex].parent)
-            continue;
         //
-        let child = this.children[this.fileNameList[i].dataIndex];
-        let bs = child.getBoundingSphereWorld();
-        updatingChildren[updatingChildren.length] = {child:child, disToEye:lookAt.eye.clone().sub(bs.center).lengthSq()};
-        //this.children[i].update(context);
+        for(let i=0, length = this.fileNameList.length; ; ) {
+            if(i < length) {updateChild(this.fileNameList[i++], this.children, context, visibleMesh)} else break;
+            if(i < length) {updateChild(this.fileNameList[i++], this.children, context, visibleMesh)} else break;
+            if(i < length) {updateChild(this.fileNameList[i++], this.children, context, visibleMesh)} else break;
+            if(i < length) {updateChild(this.fileNameList[i++], this.children, context, visibleMesh)} else break;
+            if(i < length) {updateChild(this.fileNameList[i++], this.children, context, visibleMesh)} else break;
+            if(i < length) {updateChild(this.fileNameList[i++], this.children, context, visibleMesh)} else break;
+            if(i < length) {updateChild(this.fileNameList[i++], this.children, context, visibleMesh)} else break;
+            if(i < length) {updateChild(this.fileNameList[i++], this.children, context, visibleMesh)} else break;
+        }
     }
-    //
-    updatingChildren.sort((a,b)=>{return a.disToEye - b.disToEye});
-    for(let i=0, length = updatingChildren.length; i<length; ++i) {
-        updatingChildren[i].child.update(context, visibleMesh);
-    }
-};
+}();
 
 THREE.ProxyNode.prototype.removeUnExpected = function() {
     for(let i=0, length = this.children.length; i<length; ++i) {

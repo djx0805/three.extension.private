@@ -122,7 +122,7 @@
                 super(viewer);
                 //
                 this.onKeyDown = (keyboardEvent)=> {
-                    if((keyboardEvent.key === 'd')) {
+                    if((keyboardEvent.keyCode === 68)) {
                         if (!controls) {
                             controls = new SpinAnimationTool(viewer, terrainLayer,scene.globalOffset);
                             //controls = new tjh.ar.BasicTerrainControls(viewer);
@@ -130,9 +130,7 @@
                             return true;
                         }
                         else {
-                            controls.release();
                             viewer.removeEventListenerFront();
-                            controls = null;
                             return true;
                         }
                     }

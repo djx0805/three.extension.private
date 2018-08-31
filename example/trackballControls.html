@@ -37,17 +37,18 @@
 		<script src="../build/three.extension.js"></script>
 		<script src="../build/tjh.ar.js"></script>
 		<script src="../build/tjh.ar.tools.js"></script>
+		<script src="../build/extension/TrackballControls.js"></script>
+		<script src="../build/extension/OrbitControls.js"></script>
 		<script src="../node_modules/three/examples/js/Detector.js"></script>
 		<script src="../node_modules/three/examples/js/libs/stats.min.js"></script>
 		<script src="../node_modules/jquery/dist/jquery.min.js"></script>
-		<script src="../build/extension/heightAnalyze.js"></script>
 		<script>
 
 			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 			var container, stats;
 
-			var camera, camera1, camera2, scene, heightAnalyzeLayer, renderer;
+			var camera, scene, renderer;
 
 			var geometry, objects;
 
@@ -75,16 +76,7 @@
                 container.appendChild( renderer.domElement );
                 viewer.setRenderer(renderer);
                 //
-				camera1 = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 150000 );
-                camera1.position.set(530771-1274.28,2508554-425.81,2000);
-                camera1.lookAt(new THREE.Vector3(530771-1274.28,2508554-425.81, 52));
-                camera2 = new THREE.OrthographicCamera(-window.innerWidth/2, window.innerWidth/2, window.innerHeight/2, -window.innerHeight/2, 1, 1500000);
-                camera2.position.set(530771-1274.28,2508554-425.81,2000);
-                camera2.lookAt(new THREE.Vector3(530771-1274.28,2508554-425.81, 52));
-                //
-				camera = camera1;
-				//
-				camera.atuoCalculateNearFar = true;
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 1500000 );
 				viewer.setCamera(camera);
                 //
 				//controls = new THREE.TrackballControls( this.camera, this.renderer.domElement );
@@ -95,24 +87,19 @@
                 //camera.position.set(-1274.28,-425.81,2000);
                 //camera.lookAt(new THREE.Vector3(-1274.28,-425.81, 52));
 
-
+                camera.position.set(530771-1274.28,2508554-425.81,2000);
+                camera.lookAt(new THREE.Vector3(530771-1274.28,2508554-425.81, 52));
+                //camera.atuoCalculateNearFar = true;
 
 				scene = new tjh.ar.ARScene();
 				scene.fog = new THREE.Fog( 0x000000, 1, 15000 );
 				scene.autoUpdate = false;
-
-                heightAnalyzeLayer = new HeightAnalyzeLayer();
-                heightAnalyzeLayer.setColorMap([{range:[-1000, 10], color:new THREE.Color(0x00ff00)},
-					{range:[10, 30], color:new THREE.Color(0xffff00)},
-					{range:[30, 60], color:new THREE.Color(0x00ffff)},
-					{range:[60, 100], color:new THREE.Color(0xff00ff)},
-					{range:[100, 1000], color:new THREE.Color(0xff0000)}]);
-                //
-                scene.addPostLayer('HeightAnalyzeLayer', 0, heightAnalyzeLayer);
-
 				viewer.setScene(scene);
 
-                controls = new tjh.ar.BasicTerrainControls(viewer);
+                //controls = new tjh.ar.BasicTerrainControls(viewer);
+                controls = new TrackballControls(viewer);
+                //controls = new OrbitControls(viewer);
+                controls.setTarget(new THREE.Vector3(530771-1274.28,2508554-425.81, 52));
                 viewer.pushEventListenerFront(controls);
 
                 var ambientLight = new THREE.AmbientLight( 0xffffff );
@@ -126,18 +113,22 @@
 				terrainLayer.forceRootLoad = true;
 				terrainLayer.dataBasePager.maxWaitingLoaded = 1;
 				terrainLayer.dataBasePager.maxSortRequests = 30;
-				terrainLayer.dataBasePager.pageScaleFunc = function (contex, node) {
+				terrainLayer.dataBasePager.pageScaleFunc = function (contex, node)  {
                     const v1 = new THREE.Vector3();
                     const v2 = new THREE.Vector3();
                     v1.setFromMatrixPosition( contex.camera.matrixWorld );
                     v2.setFromMatrixPosition( node.matrixWorld );
                     let disToCamera = v1.distanceTo( v2 );
-                    if(disToCamera > 1500) {
-                        return 1500.0/disToCamera;
+                    if(disToCamera > 2500) {
+                        return 2500.0/disToCamera;
                     }
                     //
 					return 1.0
                 };
+                //terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=21b17487-63e8-42e4-b69a-a57cecad8034");
+
+                //terrainLayer.addTerrain("http://192.168.10.13:8002/api/data/osgjsData?urlInfo=352fff45-4c1d-45d4-89ce-7a857eb098ee");
+
 				//5
                 terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=753a7f62-d48e-44c9-97f8-8cd698f5cdfc");
                 //8-1
@@ -153,13 +144,13 @@
                 //5-1-1-新
                 terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=1c4b0dd7-bdc6-4ada-85d1-dc002318252a");
                 //6-1-新
-                terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=95b4aead-5fc2-4c4d-bae0-90ee0153da2c");
+                //terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=95b4aead-5fc2-4c4d-bae0-90ee0153da2c");
                 //6-2-新
-                terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=acebf65f-23b1-4ffd-92f4-21ff989da8fb");
+                //terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=acebf65f-23b1-4ffd-92f4-21ff989da8fb");
                 //6-3-新
-                terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=1c53618b-fef1-4dca-b8de-5cb2fb01fe2d");
+                //terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=1c53618b-fef1-4dca-b8de-5cb2fb01fe2d");
                 //5-1-2-新
-                terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=7d0e1a03-81f1-4c72-bd86-f8c6bcbf347c");
+               // terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=7d0e1a03-81f1-4c72-bd86-f8c6bcbf347c");
 
 
 				/*var pagedLod0 = new THREE.PagedLod();
@@ -171,7 +162,7 @@
 				//
 
 				var dataPager = new THREE.DataBasePager();
-				dataPager.maxWaitingLoaded = 1;
+				dataPager.maxWaitingLoaded = 2;
 				dataPager.maxSortRequests = 10;
 				dataPager.pageScaleFunc = function (contex, node) {
                     const v1 = new THREE.Vector3();
@@ -179,8 +170,8 @@
                     v1.setFromMatrixPosition( contex.camera.matrixWorld );
                     v2.setFromMatrixPosition( node.matrixWorld );
                     let disToCamera = v1.distanceTo( v2 );
-                    if(disToCamera > 3000) {
-                        return 3000.0/disToCamera;
+                    if(disToCamera > 3500) {
+                        return 3500.0/disToCamera;
                     }
                     //
                     return 1.0
@@ -190,67 +181,56 @@
                 scene.addModelLayer(tjhModelLayer7);
                 //9-2单体化测试
                 var tjhModelLayer = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "9af3e3da-ce7a-4c47-a70f-fc8faec3057c", dataPager);
-                scene.addModelLayer(tjhModelLayer);
+                //scene.addModelLayer(tjhModelLayer);
                 //单体化8-1测试
                 var tjhModelLayer1 = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "ddb05c63-3469-42f9-96b8-93da099cc8b5", dataPager);
-                scene.addModelLayer(tjhModelLayer1);
+                //scene.addModelLayer(tjhModelLayer1);
+
+                //单体化8-2测试
+                var tjhModelLayer1 = new tjh.ar.TJHModelLayer("192.168.10.13", 8002, "5a95b310-385b-4610-bf9a-d15c605579ff\n", dataPager);
+                //scene.addModelLayer(tjhModelLayer1);
+
                 //8-3单体化测试
                 var tjhModelLayer2 = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "3c3f46a5-e2d7-4621-8115-0475f01b835d", dataPager);
-                scene.addModelLayer(tjhModelLayer2);
+               // scene.addModelLayer(tjhModelLayer2);
                 var tjhModelLayer4 = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "1caba847-72da-4374-9ad1-4115c3ab37fc", dataPager);
-                scene.addModelLayer(tjhModelLayer4);
+                //scene.addModelLayer(tjhModelLayer4);
+                //var tjhModelLayer5 = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "becbec81-5e20-4bf1-b7f1-d67b1a2a1ed7", dataPager);
+                //scene.addModelLayer(tjhModelLayer5);
                 //6-1单体化新
                 var tjhModelLayer6 = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "651d22c0-4fde-4e76-ad00-36c6677777b4", dataPager);
-                scene.addModelLayer(tjhModelLayer6);
+                //scene.addModelLayer(tjhModelLayer6);
 
                 //5-1-2单体化新
                 var tjhModelLayer8 = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "315c508f-503a-42f6-98ef-e4c3b0e401ff", dataPager);
-                scene.addModelLayer(tjhModelLayer8);
+                //scene.addModelLayer(tjhModelLayer8);
                 //5-1-1单体化新
                 var tjhModelLayer9 = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "ac4aa01c-c3a0-4543-9672-994a81683a68", dataPager);
-                scene.addModelLayer(tjhModelLayer9);
+                //scene.addModelLayer(tjhModelLayer9);
 				//
-                heightAnalyzeLayer.addSourceLayer(tjhModelLayer);
-                heightAnalyzeLayer.addSourceLayer(tjhModelLayer1);
-                heightAnalyzeLayer.addSourceLayer(tjhModelLayer2);
-                heightAnalyzeLayer.addSourceLayer(tjhModelLayer4);
-                heightAnalyzeLayer.addSourceLayer(tjhModelLayer6);
-                heightAnalyzeLayer.addSourceLayer(tjhModelLayer7);
-                heightAnalyzeLayer.addSourceLayer(tjhModelLayer8);
-                heightAnalyzeLayer.addSourceLayer(tjhModelLayer9);
-                //let defaultRenderTechnique = new tjh.ar.RenderTechnique(renderer);
-                //let defaultRenderPass = new tjh.ar.NormalRenderPass(scene, camera);
-                //defaultRenderTechnique.addRenderPass(defaultRenderPass);
-                //viewer.pushRenderTechnique(defaultRenderTechnique);
 
-                let defaultRenderTechnique = new tjh.ar.RenderTechnique(renderer, scene, camera);
-                let normalRenderPass = new tjh.ar.NormalRenderPass(scene, camera, defaultRenderTechnique.screenRT);
-                let heightAnalyzeRenderPass = new  HeightAnalyzeRenderPass(scene, camera, defaultRenderTechnique.offScreenRT);
-                let outPutRenderPass = new tjh.ar.OutPutRenderPass(scene, camera, defaultRenderTechnique.offScreenRT);
-                defaultRenderTechnique.addRenderPass(normalRenderPass);
-                defaultRenderTechnique.addRenderPass(heightAnalyzeRenderPass);
-                defaultRenderTechnique.addRenderPass(outPutRenderPass);
+                let defaultRenderTechnique = new tjh.ar.OutLineTechnique(renderer, scene, camera);
                 viewer.pushRenderTechnique(defaultRenderTechnique);
-				//
+
+                //
+                var selectTool = null;
+                //
                 class SelectEvent extends tjh.ar.WindowEventListener {
                     constructor(viewer) {
                         super(viewer);
                         //
                         this.onKeyDown = (keyboardEvent)=> {
-                            if((keyboardEvent.key === 's')) {
-                                if(camera === camera1) {
-                                    camera = camera2;
-								}
-								else if(camera === camera2) {
-                                    camera = camera1;
-								}
-								//
-								viewer.setCamera(camera);
-                                //
-                                defaultRenderTechnique.camera = camera;
-                                normalRenderPass.camera = camera;
-                                heightAnalyzeRenderPass.camera = camera;
-                                outPutRenderPass.camera = camera;
+                            if((keyboardEvent.keyCode === 115 || keyboardEvent.keyCode === 83)) {
+                                if (!selectTool) {
+                                    selectTool = new tjh.ar.tools.PointSelectTool(viewer, camera, true, viewer.scene.modelLayers);
+                                    viewer.pushEventListenerFront(selectTool);
+                                    return true;
+                                }
+                                else {
+                                    viewer.removeEventListenerFront();
+                                    selectTool = null;
+                                    return true;
+                                }
                             }
                         }
                     }

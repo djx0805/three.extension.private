@@ -516,6 +516,9 @@
 	                    '#include <logdepthbuf_pars_fragment>' ,
 	                    '#include <clipping_planes_pars_fragment>' ,
 	                    'void main() {' ,
+	                    '  float dist = distance(gl_PointCoord, vec2(0.5,0.5));',
+	                    '  if(dist > 0.5){',
+	                    '  discard;}',
 	                    '  #include <clipping_planes_fragment>' ,
 	                    '  vec3 outgoingLight = vec3( 0.0 );' ,
 	                    '  vec4 diffuseColor = vec4( diffuse, opacity );' ,
@@ -618,6 +621,9 @@
 	                    '#include <logdepthbuf_pars_fragment>' ,
 	                    '#include <clipping_planes_pars_fragment>' ,
 	                    'void main() {' ,
+	                    '  float dist = distance(gl_PointCoord, vec2(0.5,0.5));',
+	                    '  if(dist > 0.5){',
+	                    '  discard;}',
 	                    '  #include <clipping_planes_fragment>' ,
 	                    '  vec3 outgoingLight = vec3( 0.0 );' ,
 	                    '  vec4 diffuseColor = vec4( diffuse, opacity );' ,
@@ -705,6 +711,9 @@
 	                    '#include <logdepthbuf_pars_fragment>' ,
 	                    '#include <clipping_planes_pars_fragment>' ,
 	                    'void main() {' ,
+	                    '  float dist = distance(gl_PointCoord, vec2(0.5,0.5));',
+	                    '  if(dist > 0.5){',
+	                    '  discard;}',
 	                    '  #include <clipping_planes_fragment>' ,
 	                    '  vec3 outgoingLight = vec3( 0.0 );' ,
 	                    '  vec4 diffuseColor = vec4( diffuse, opacity );' ,
@@ -805,6 +814,9 @@
 	                '#include <logdepthbuf_pars_fragment>' ,
 	                '#include <clipping_planes_pars_fragment>' ,
 	                'void main() {' ,
+	                '  float dist = distance(gl_PointCoord, vec2(0.5,0.5));',
+	                '  if(dist > 0.5){',
+	                '  discard;}',
 	                '  #include <clipping_planes_fragment>' ,
 	                '  vec3 outgoingLight = vec3( 0.0 );' ,
 	                '  vec4 diffuseColor = vec4( diffuse, opacity );' ,
@@ -1015,14 +1027,26 @@
 	    return false;
 	};
 
+	/**
+	 * @classdesc 内存深度取样器
+	 * @class
+	 * @memberOf tjh.ar
+	 */
 	class MemDepthSampler {
 	    constructor() {
+	        /**
+	         * 取样模式
+	         * @enum
+	         */
 	        MemDepthSampler.SAMPLE_MODE = {
+	            /** @description 普通高度*/
 	          SAMPLE_MODE_NORMAL : 0,
+	            /** @description 低值*/
 	          SAMPLE_MODE_LOW : 1,
+	            /** @description 高值*/
 	          SAMPLE_MODE_HIGH : 2
 	        };
-	        //
+
 	        this.noValue = 0;
 	        this.size = [0,0];
 	        this.range = [0,0,0,0];
@@ -1031,7 +1055,13 @@
 	        //
 	        let unpackDownscale = 255.0 / 256.0;
 	        this._unpackFactors = new THREE.Vector4( unpackDownscale/(256.0 * 256.0 * 256.0), unpackDownscale/(256.0 * 256.0),  unpackDownscale/256.0, unpackDownscale);
-	        //
+
+	        /**
+	         * 根据x, y 获取该点的普通深度
+	         * @param {number} x -x
+	         * @param {number} y -y
+	         * @return {number} -深度
+	         */
 	        let getZNormal = (x, y)=> {
 	            if(x < this.range[0] || x > this.range[1] || y < this.range[2] || y > this.range[3]) {
 	                return this.noValue;
@@ -1053,6 +1083,13 @@
 	            return z;
 	        };
 
+	        /**
+	         * 根据x, y 获取该点的高值
+	         * @param {number} x -x
+	         * @param {number} y -y
+	         * @param {number} sample_mode -取样模式
+	         * @return {number} -深度
+	         */
 	        this.getZ = (x,y, sample_mode)=> {
 	            if(sample_mode === MemDepthSampler.SAMPLE_MODE.SAMPLE_MODE_NORMAL) {
 	                return getZNormal(x, y);
@@ -1084,13 +1121,16 @@
 	         * @type {bool}
 	         */
 		    this.matrixAutoUpdate = false;
+
+	        /**
+	         * 是否一次全部加载 loadAllOnce
+	         * @type {bool}
+	         */
+	        this.loadAllOnce = false;
 	        /**
 	         * 适量贴合模式
 	         * @enum {number}
 	         */
-
-	        this.loadAllOnce = false;
-	        //
 	        FeatureLayer.FIT_PATTERN = {
 	            /** @description 贴合地形周围低值*/
 	            FIT_TERRIAN_LOW: 0,
@@ -1294,7 +1334,7 @@
 	         */
 	        this.labelControler = {
 	            /**
-	             * 标注可用性设置 setAvaliability
+	             * 标注可用性设置
 	             * @type {function}
 	             */
 	            setAvaliability : function(valid){
@@ -1302,33 +1342,33 @@
 	                featureLayer.isReplaceWithModel = !valid;
 	            },
 	            /**
-	             * 标注透明度 opacity
+	             * 标注透明度
 	             * @type {number}
 	             *
 	             */
 	            opacity : 1.0,
 	            /**
-	             * 标注颜色 color
+	             * 标注颜色
 	             * @type {THREE.Color}
 	             */
 	            color : new THREE.Color(0xffff00),
 	            /**
-	             * 标注的面 side
+	             * 标注的面
 	             * @type {THREE.DoubleSize}
 	             */
 	            side : THREE.DoubleSize,
 	            /**
-	             * 标注字体大小 fontSize
+	             * 标注字体大小
 	             * @type {number}
 	             */
 	            fontSize : 5,
 	            /**
-	             * 标注字距 fontDivisions
+	             * 标注字距
 	             * @type {number}
 	             */
 	            fontDivisions : 2,
 	            /**
-	             * 标注字体 font
+	             * 标注字体
 	             * @type {number}
 	             */
 	            fontName : "msyh",
@@ -2433,7 +2473,10 @@
 	           }
 	       }
 	    }
-
+	    /**
+	     * 移除物体
+	     * @param {Object} obj -所要移除的物体
+	     */
 	    remove(obj) {
 	        if(obj.mixer) {
 	            let index = this._mixers_.indexOf(obj.mixer);
@@ -2514,6 +2557,11 @@
 
 	       this.update = function(context) {
 	           this._visibleMesh_ = [];
+	           this.dataBasePager.loadRequest = [];
+	           //
+	           context.onTextureLoadFailed = function () {
+	               return false;
+	           };
 	           //
 	           if(this.visible) {
 	               proxyNode.visible = true;
@@ -2527,11 +2575,31 @@
 	               context.lookAt = context.camera.matrixWorldInverse.getLookAt();
 	           }
 	           //
-	           let bs = proxyNode.getBoundingSphereWorld();
-	           if(!bs.valid() || context.frustum.intersectsSphere(bs)) {
+	           //let bs = proxyNode.getBoundingSphereWorld();
+	           //if(!bs.valid() || context.frustum.intersectsSphere(bs)) {
 	               context.dataBasePager = this.dataBasePager;
 	               context.dataBasePager.cullGroup = true;
+	               context.updateTJHModel = true;
 	               proxyNode.update(context, this._visibleMesh_);
+	               delete context.updateTJHModel;
+	           //}
+	           //
+	           this.loadRequest = this.dataBasePager.loadRequest;
+	           //
+	           if(this.loadRequest.length > 0) {
+	               this.loadRequest.sort((a,b)=> {
+	                   if(a.level !== b.level) {
+	                       return a.level - b.level;
+	                   }
+	                   //
+	                   if(a.disToEye > 0 && b.disToEye > 0) {
+	                       return a.disToEye - b.disToEye;
+	                   }
+	                   //
+	                   return 0;
+	               });
+	               //
+	               this.loadRequest[this.loadRequest.length] = {sorted : true};
 	           }
 	       };
 
@@ -2539,7 +2607,10 @@
 	           this.removeUnExpectedChild(10);
 	       };
 
-
+	        /**
+	         * 获取Layer当前的包围盒
+	         * @return {THREE.Box3} -包围盒
+	         */
 	       this.getCurrentBoundingBoxWorld = function () {
 	            let bb = new THREE.Box3();
 	            for(let n=0, length = this._visibleMesh_.length; n<length; ++n) {
@@ -2548,7 +2619,10 @@
 	            //
 	            return bb;
 	       };
-
+	        /**
+	         * 获取Layer当前的包围球
+	         * @return {THREE.Sphere} -包围球
+	         */
 	       this.getCurrentBoundingSphereWorld = function () {
 	            let bs = new THREE.Sphere();
 	            for(let n=0, length = this._visibleMesh_.length; n<length; ++n) {
@@ -2600,7 +2674,11 @@
 	                }
 	            }
 	        })();
-	        //
+
+	        /**
+	         * 获取Layer当前的包围盒
+	         * @return {THREE.Box3} -包围盒
+	         */
 	        this.getCurrentBoundingBoxWorld = function () {
 	            let bb = new THREE.Box3();
 	            for(let n=0, length = this._visibleMesh_.length; n<length; ++n) {
@@ -2609,7 +2687,11 @@
 	            //
 	            return bb;
 	        };
-	        //
+
+	        /**
+	         * 获取Layer当前的包围球
+	         * @return {THREE.Sphere} -包围球
+	         */
 	        this.getCurrentBoundingSphereWorld = function () {
 	            let bs = new THREE.Sphere();
 	            for(let n=0, length = this._visibleMesh_.length; n<length; ++n) {
@@ -2638,6 +2720,7 @@
 
 	    update(context) {
 	        this._visibleMesh_ = [];
+	        this.dataBasePager.loadRequest = [];
 	        //
 	        if(!this.visible)
 	            return;
@@ -2646,14 +2729,15 @@
 	            if(material instanceof  THREE.MeshBasicMaterial) {
 	                material.map = undefined;
 	            }
-	            //
-	            return true;
+	            return false;
 	        };
 	        //
 	        if(!context.lookAt) {
 	            context.lookAt = context.camera.matrixWorldInverse.getLookAt();
 	        }
 	        super.update(context, this._visibleMesh_);
+	        //
+	        this.loadRequest = this.dataBasePager.loadRequest;
 	    }
 
 	    intersectWithRay(raycaster) {
@@ -2685,7 +2769,7 @@
 	            let texture = loadingData.texture;
 	            //
 	            let tileUrl = this.imgID.toString()+"*"+tileInfo.level+"*"+tileInfo.row+"*"+tileInfo.col;
-	            console.log("load tile " + tileUrl);
+	            // console.log("load tile " + tileUrl);
 
 	            let vpMatrix = this.viewMatrix.clone().premultiply(this.projectMatrix);
 	            let invM = new THREE.Matrix4();
@@ -3216,11 +3300,20 @@
 
 	}
 
+	/**
+	 * @classdesc 后期处理图层
+	 * @class
+	 * @memberOf tjh.ar
+	 */
 	class PostLayer {
 	    constructor() {
 	        this.visible = true;
 	    };
 
+	    /**
+	     * 判断该图层是否为空
+	     * @return {bool} -是否为空
+	     */
 	    isEmpty() {
 	        return true;
 	    }
@@ -3728,6 +3821,12 @@
 	    }
 	}
 
+	/**
+	 * @classdesc 轮廓化图层
+	 * @class
+	 * @memberOf tjh.ar
+	 * @extends PostLayer
+	 */
 	class OutLineObjLayer extends PostLayer {
 	    constructor() {
 	        super();
@@ -3735,7 +3834,11 @@
 	        this.name = 'OutLineObjLayer';
 	        //
 	        let outLineObjs = [];
-	        //
+
+	        /**
+	         * 添加轮廓化对象（一个或多个）
+	         * @param {THREE.Object3D} obj -对象
+	         */
 	        this.addOutlineObj = (...objects)=> {
 	            for(let i=0; i<objects.length; ++i) {
 	                if(outLineObjs.indexOf(objects[i]) >= 0) {
@@ -3749,6 +3852,10 @@
 	            }
 	        };
 
+	        /**
+	         * 移除轮廓化对象（一个或多个）
+	         * @param {THREE.Object3D} obj -对象
+	         */
 	        this.removeOutlineObj = (...objects)=> {
 	            for(let i=0; i<objects.length; ++i) {
 	                let index = outLineObjs.indexOf(objects[i]);
@@ -3758,6 +3865,9 @@
 	            }
 	        };
 
+	        /**
+	         * 清除所有轮廓化对象
+	         */
 	        this.clear = ()=> {
 	            for(let i=0, length = outLineObjs.length; i<length; ++i) {
 	                this.removeOutlineObj(outLineObjs[i]);
@@ -3766,6 +3876,10 @@
 	            outLineObjs = [];
 	        };
 
+	        /**
+	         * 获取所有轮廓化对象
+	         * @param {array} outLineObjs -轮廓化对象
+	         */
 	        this.getOutLineObjs = ()=> {
 	            return outLineObjs;
 	        };
@@ -3890,6 +4004,8 @@
 	                }
 	            }
 	        };
+	        //
+	        this._numSkipRemoveUnExpected_ = 0;
 	    }
 
 	    /**
@@ -4044,7 +4160,6 @@
 	        this.temporaryObjs.push(obj);
 	        this.add(obj);
 	    }
-
 	    /**
 	     * 删除临时渲染对象
 	     * @param {THREE.Object3D} obj -临时渲染对象
@@ -4093,6 +4208,11 @@
 	     * 删除过期数据
 	     */
 	    removeUnExpected() {
+	        if(this._numSkipRemoveUnExpected_ !== 10) {
+	            ++this._numSkipRemoveUnExpected_;
+	            return;
+	        }
+	        //
 	        for(let n=0, length = this.terrainLayers.length; n<length; ++n) {
 	            if(this.terrainLayers[n].removeUnExpected) {
 	                this.terrainLayers[n].removeUnExpected();
@@ -4118,6 +4238,8 @@
 	                this.customLayers[n].removeUnExpected();
 	            }
 	        }
+	        //
+	        this._numSkipRemoveUnExpected_ = 0;
 	    }
 	}
 
@@ -4220,6 +4342,22 @@
 	     * @returns {boolean}
 	     */
 	    onMiddleUp(mouseEvent) {
+	        return false;
+	    }
+
+	    /**
+	     * @param mouseEvent
+	     * @returns {boolean}
+	     */
+	    onClick(mouseEvent) {
+	        return false;
+	    }
+
+	    /**
+	     * @param mouseEvent
+	     * @returns {boolean}
+	     */
+	    onDoubleClick(mouseEvent) {
 	        return false;
 	    }
 
@@ -4414,20 +4552,45 @@
 	        /**
 	         * 渲染场景
 	         */
+	        this._lastCamera_ = new THREE.Matrix4();
+	        this._numSkipUpdate_ = 0;
 	        this.renderOneFrame =  (()=> {
 	            let pagedLodSet = new Set();
 	            //
 	            let updateScene = (object, frustum, numFrame) => {
-	                for(let n=0, length = this.scene.terrainLayers.length; n<length; ++n) {
-	                    if(this.scene.terrainLayers[n].visible) {
-	                        this.scene.terrainLayers[n].update({camera:this.camera, frustum:frustum, numFrame:numFrame});
+	                let isCameraChanged = true;
+	                if(this._lastCamera_.equals(this.camera.matrixWorldInverse)) {
+	                    isCameraChanged = false;
+	                }
+	                else {
+	                    this._lastCamera_.copy(this.camera.matrixWorldInverse);
+	                }
+	                //
+	                if(isCameraChanged || this._numSkipUpdate_ === 5) {
+	                    for(let n=0, length = this.scene.terrainLayers.length; n<length; ++n) {
+	                        if(this.scene.terrainLayers[n].visible) {
+	                            this.scene.terrainLayers[n].update({camera:this.camera, frustum:frustum, numFrame:numFrame});
+	                        }
 	                    }
 	                }
 	                //
 	                for(let n=0, length = this.scene.modelLayers.length; n<length; ++n) {
 	                    if(this.scene.modelLayers[n].visible) {
-	                        this.scene.modelLayers[n].update({camera:this.camera, frustum:frustum, numFrame:numFrame});
+	                        if(this.scene.modelLayers[n].isTJHModelLayer) {
+	                            if(isCameraChanged || this._numSkipUpdate_ === 5)
+	                              this.scene.modelLayers[n].update({camera:this.camera, frustum:frustum, numFrame:numFrame});
+	                        }
+	                        else {
+	                            this.scene.modelLayers[n].update({camera:this.camera, frustum:frustum, numFrame:numFrame});
+	                        }
 	                    }
+	                }
+	                //
+	                if(this._numSkipUpdate_ === 5 || isCameraChanged) {
+	                    this._numSkipUpdate_ = 0;
+	                }
+	                else {
+	                    ++this._numSkipUpdate_;
 	                }
 	                //
 	                for(let n=0, length = this.scene.featureLayers.length; n<length; ++n) {
@@ -4515,6 +4678,62 @@
 	                        //
 	                        this.scene.lightSources[n].shadow.camera.updateProjectionMatrix();
 	                    }
+	                }
+	                //
+	                let layers = [];
+	                for(let n=0, length = this.scene.terrainLayers.length; n<length; ++n) {
+	                    if(this.scene.terrainLayers[n].visible && this.scene.terrainLayers[n].loadRequest && this.scene.terrainLayers[n].loadRequest.length > 0) {
+	                        layers[layers.length] = {layer:this.scene.terrainLayers[n], bs:this.scene.terrainLayers[n].getBoundingSphereWorld().clone()};
+	                    }
+	                }
+	                //
+	                layers.sort((a,b)=> {
+	                    if(!a.bs.valid() && b.bs.valid()) {
+	                        return -1;
+	                    }
+	                    if(a.bs.valid() && !b.bs.valid()) {
+	                        return 1;
+	                    }
+	                    if(a.bs.valid() && b.bs.valid()) {
+	                        let da = a.bs.center.clone().distanceTo(this.camera.position);
+	                        let db = b.bs.center.clone().distanceTo(this.camera.position);
+	                        return da - db;
+	                    }
+	                    //
+	                    return 0;
+	                });
+	                //
+	                for(let n=0, length = layers.length; n<length; ++n) {
+	                    layers[n].layer.dataBasePager.requestData(layers[n].layer.loadRequest);
+	                }
+	                //
+	                layers = [];
+	                for(let n=0, length = this.scene.modelLayers.length; n<length; ++n) {
+	                    if(this.scene.modelLayers[n].visible) {
+	                        if(this.scene.modelLayers[n].isTJHModelLayer && this.scene.modelLayers[n].loadRequest && this.scene.modelLayers[n].loadRequest.length > 0) {
+	                            layers[layers.length] = {layer:this.scene.modelLayers[n], bs:this.scene.modelLayers[n].getBoundingSphereWorld().clone()};
+	                        }
+	                    }
+	                }
+	                //
+	                layers.sort((a,b)=> {
+	                    if(!a.bs.valid() && b.bs.valid()) {
+	                        return -1;
+	                    }
+	                    if(a.bs.valid() && !b.bs.valid()) {
+	                        return 1;
+	                    }
+	                    if(a.bs.valid() && b.bs.valid()) {
+	                        let da = a.bs.center.clone().distanceTo(this.camera.position);
+	                        let db = b.bs.center.clone().distanceTo(this.camera.position);
+	                        return da - db;
+	                    }
+	                    //
+	                    return 0;
+	                });
+	                //
+	                for(let n=0, length = layers.length; n<length; ++n) {
+	                    layers[n].layer.dataBasePager.requestData(layers[n].layer.loadRequest);
 	                }
 	            };
 	            //
@@ -4634,6 +4853,47 @@
 	            for(let i=0; i<viewer.eventListenerStack.length; ++i) {
 	                if (viewer.eventListenerStack[i].onMouseUp !== undefined &&
 	                    viewer.eventListenerStack[i].onMouseUp(event)) {
+	                    return true;
+	                }
+	            }
+	        };
+	        /**
+	         * 路由 mouse click 事件
+	         * @param event
+	         * @returns {boolean}
+	         */
+	        this.onClick = ( event )=> {
+	            if(!this.active) {
+	                return true;
+	            }
+	            //
+	            event.preventDefault();
+	            event.stopPropagation();
+	            //
+	            for(let i=0; i<viewer.eventListenerStack.length; ++i) {
+	                if(viewer.eventListenerStack[i].onClick !== undefined &&
+	                    viewer.eventListenerStack[i].onClick(event)) {
+	                    return true;
+	                }
+	            }
+	        };
+
+	        /**
+	         * 路由 mouse dblclick 事件
+	         * @param event
+	         * @returns {boolean}
+	         */
+	        this.onDoubleClick = ( event )=> {
+	            if(!this.active) {
+	                return true;
+	            }
+	            //
+	            event.preventDefault();
+	            event.stopPropagation();
+	            //
+	            for(let i=0; i<viewer.eventListenerStack.length; ++i) {
+	                if(viewer.eventListenerStack[i].onDoubleClick !== undefined &&
+	                    viewer.eventListenerStack[i].onDoubleClick(event)) {
 	                    return true;
 	                }
 	            }
@@ -4824,6 +5084,8 @@
 
 	        this.domElement.addEventListener( 'mousedown', this.onMouseDown, false );
 	        this.domElement.addEventListener( 'mouseup', this.onMouseUp, false );
+	        this.domElement.addEventListener( 'click', this.onClick, false );
+	        this.domElement.addEventListener( 'dblclick', this.onDoubleClick, false );
 	        this.domElement.addEventListener( 'mousemove', this.onMouseMove, false );
 	        this.domElement.addEventListener( 'wheel', this.onMouseWheel, false );
 
@@ -4846,6 +5108,9 @@
 
 	        this.domElement.removeEventListener( 'mousedown', this.onMouseDown, false );
 	        this.domElement.removeEventListener( 'mouseup', this.onMouseUp, false );
+	        this.domElement.removeEventListener( 'click', this.onClick, false );
+	        this.domElement.removeEventListener( 'dblclick', this.onDoubleClick, false );
+
 	        this.domElement.removeEventListener( 'mousemove', this.onMouseMove, false );
 	        this.domElement.removeEventListener( 'wheel', this.onMouseWheel, false );
 
@@ -5160,6 +5425,7 @@
 	                //
 	                let transform = tranMatrix0.premultiply(rotateMatrix0).premultiply(tranMatrix1);
 	                transform.premultiply(this.viewer.camera.matrixWorldInverse);
+	                //
 	                let camMatrix = new THREE.Matrix4();
 	                camMatrix.getInverse(transform);
 	                camMatrix.decompose(pos, q, s);

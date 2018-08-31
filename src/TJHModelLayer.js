@@ -48,6 +48,11 @@ class TJHModelLayer extends THREE.Group {
 
        this.update = function(context) {
            this._visibleMesh_ = [];
+           this.dataBasePager.loadRequest = [];
+           //
+           context.onTextureLoadFailed = function () {
+               return false;
+           }
            //
            if(this.visible) {
                proxyNode.visible = true;
@@ -61,11 +66,31 @@ class TJHModelLayer extends THREE.Group {
                context.lookAt = context.camera.matrixWorldInverse.getLookAt();
            }
            //
-           let bs = proxyNode.getBoundingSphereWorld();
-           if(!bs.valid() || context.frustum.intersectsSphere(bs)) {
+           //let bs = proxyNode.getBoundingSphereWorld();
+           //if(!bs.valid() || context.frustum.intersectsSphere(bs)) {
                context.dataBasePager = this.dataBasePager;
                context.dataBasePager.cullGroup = true;
+               context.updateTJHModel = true;
                proxyNode.update(context, this._visibleMesh_);
+               delete context.updateTJHModel;
+           //}
+           //
+           this.loadRequest = this.dataBasePager.loadRequest;
+           //
+           if(this.loadRequest.length > 0) {
+               this.loadRequest.sort((a,b)=> {
+                   if(a.level !== b.level) {
+                       return a.level - b.level;
+                   }
+                   //
+                   if(a.disToEye > 0 && b.disToEye > 0) {
+                       return a.disToEye - b.disToEye;
+                   }
+                   //
+                   return 0;
+               });
+               //
+               this.loadRequest[this.loadRequest.length] = {sorted : true};
            }
        }
 
@@ -73,7 +98,10 @@ class TJHModelLayer extends THREE.Group {
            this.removeUnExpectedChild(10);
        }
 
-
+        /**
+         * 获取Layer当前的包围盒
+         * @return {THREE.Box3} -包围盒
+         */
        this.getCurrentBoundingBoxWorld = function () {
             let bb = new THREE.Box3();
             for(let n=0, length = this._visibleMesh_.length; n<length; ++n) {
@@ -82,7 +110,10 @@ class TJHModelLayer extends THREE.Group {
             //
             return bb;
        };
-
+        /**
+         * 获取Layer当前的包围球
+         * @return {THREE.Sphere} -包围球
+         */
        this.getCurrentBoundingSphereWorld = function () {
             let bs = new THREE.Sphere();
             for(let n=0, length = this._visibleMesh_.length; n<length; ++n) {

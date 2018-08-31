@@ -118,6 +118,8 @@ class ARScene extends  THREE.Scene {
                 }
             }
         };
+        //
+        this._numSkipRemoveUnExpected_ = 0;
     }
 
     /**
@@ -272,7 +274,6 @@ class ARScene extends  THREE.Scene {
         this.temporaryObjs.push(obj);
         this.add(obj);
     }
-
     /**
      * 删除临时渲染对象
      * @param {THREE.Object3D} obj -临时渲染对象
@@ -321,6 +322,11 @@ class ARScene extends  THREE.Scene {
      * 删除过期数据
      */
     removeUnExpected() {
+        if(this._numSkipRemoveUnExpected_ !== 10) {
+            ++this._numSkipRemoveUnExpected_;
+            return;
+        }
+        //
         for(let n=0, length = this.terrainLayers.length; n<length; ++n) {
             if(this.terrainLayers[n].removeUnExpected) {
                 this.terrainLayers[n].removeUnExpected();
@@ -346,6 +352,8 @@ class ARScene extends  THREE.Scene {
                 this.customLayers[n].removeUnExpected();
             }
         }
+        //
+        this._numSkipRemoveUnExpected_ = 0;
     }
 }
 
@@ -448,6 +456,22 @@ class WindowEventListener {
      * @returns {boolean}
      */
     onMiddleUp(mouseEvent) {
+        return false;
+    }
+
+    /**
+     * @param mouseEvent
+     * @returns {boolean}
+     */
+    onClick(mouseEvent) {
+        return false;
+    }
+
+    /**
+     * @param mouseEvent
+     * @returns {boolean}
+     */
+    onDoubleClick(mouseEvent) {
         return false;
     }
 
@@ -642,20 +666,45 @@ class Viewer {
         /**
          * 渲染场景
          */
+        this._lastCamera_ = new THREE.Matrix4();
+        this._numSkipUpdate_ = 0;
         this.renderOneFrame =  (()=> {
             let pagedLodSet = new Set();
             //
             let updateScene = (object, frustum, numFrame) => {
-                for(let n=0, length = this.scene.terrainLayers.length; n<length; ++n) {
-                    if(this.scene.terrainLayers[n].visible) {
-                        this.scene.terrainLayers[n].update({camera:this.camera, frustum:frustum, numFrame:numFrame});
+                let isCameraChanged = true;
+                if(this._lastCamera_.equals(this.camera.matrixWorldInverse)) {
+                    isCameraChanged = false;
+                }
+                else {
+                    this._lastCamera_.copy(this.camera.matrixWorldInverse);
+                }
+                //
+                if(isCameraChanged || this._numSkipUpdate_ === 5) {
+                    for(let n=0, length = this.scene.terrainLayers.length; n<length; ++n) {
+                        if(this.scene.terrainLayers[n].visible) {
+                            this.scene.terrainLayers[n].update({camera:this.camera, frustum:frustum, numFrame:numFrame});
+                        }
                     }
                 }
                 //
                 for(let n=0, length = this.scene.modelLayers.length; n<length; ++n) {
                     if(this.scene.modelLayers[n].visible) {
-                        this.scene.modelLayers[n].update({camera:this.camera, frustum:frustum, numFrame:numFrame});
+                        if(this.scene.modelLayers[n].isTJHModelLayer) {
+                            if(isCameraChanged || this._numSkipUpdate_ === 5)
+                              this.scene.modelLayers[n].update({camera:this.camera, frustum:frustum, numFrame:numFrame});
+                        }
+                        else {
+                            this.scene.modelLayers[n].update({camera:this.camera, frustum:frustum, numFrame:numFrame});
+                        }
                     }
+                }
+                //
+                if(this._numSkipUpdate_ === 5 || isCameraChanged) {
+                    this._numSkipUpdate_ = 0;
+                }
+                else {
+                    ++this._numSkipUpdate_;
                 }
                 //
                 for(let n=0, length = this.scene.featureLayers.length; n<length; ++n) {
@@ -743,6 +792,62 @@ class Viewer {
                         //
                         this.scene.lightSources[n].shadow.camera.updateProjectionMatrix();
                     }
+                }
+                //
+                let layers = [];
+                for(let n=0, length = this.scene.terrainLayers.length; n<length; ++n) {
+                    if(this.scene.terrainLayers[n].visible && this.scene.terrainLayers[n].loadRequest && this.scene.terrainLayers[n].loadRequest.length > 0) {
+                        layers[layers.length] = {layer:this.scene.terrainLayers[n], bs:this.scene.terrainLayers[n].getBoundingSphereWorld().clone()};
+                    }
+                }
+                //
+                layers.sort((a,b)=> {
+                    if(!a.bs.valid() && b.bs.valid()) {
+                        return -1;
+                    }
+                    if(a.bs.valid() && !b.bs.valid()) {
+                        return 1;
+                    }
+                    if(a.bs.valid() && b.bs.valid()) {
+                        let da = a.bs.center.clone().distanceTo(this.camera.position);
+                        let db = b.bs.center.clone().distanceTo(this.camera.position);
+                        return da - db;
+                    }
+                    //
+                    return 0;
+                });
+                //
+                for(let n=0, length = layers.length; n<length; ++n) {
+                    layers[n].layer.dataBasePager.requestData(layers[n].layer.loadRequest);
+                }
+                //
+                layers = [];
+                for(let n=0, length = this.scene.modelLayers.length; n<length; ++n) {
+                    if(this.scene.modelLayers[n].visible) {
+                        if(this.scene.modelLayers[n].isTJHModelLayer && this.scene.modelLayers[n].loadRequest && this.scene.modelLayers[n].loadRequest.length > 0) {
+                            layers[layers.length] = {layer:this.scene.modelLayers[n], bs:this.scene.modelLayers[n].getBoundingSphereWorld().clone()};
+                        }
+                    }
+                }
+                //
+                layers.sort((a,b)=> {
+                    if(!a.bs.valid() && b.bs.valid()) {
+                        return -1;
+                    }
+                    if(a.bs.valid() && !b.bs.valid()) {
+                        return 1;
+                    }
+                    if(a.bs.valid() && b.bs.valid()) {
+                        let da = a.bs.center.clone().distanceTo(this.camera.position);
+                        let db = b.bs.center.clone().distanceTo(this.camera.position);
+                        return da - db;
+                    }
+                    //
+                    return 0;
+                });
+                //
+                for(let n=0, length = layers.length; n<length; ++n) {
+                    layers[n].layer.dataBasePager.requestData(layers[n].layer.loadRequest);
                 }
             }
             //
@@ -862,6 +967,47 @@ class Viewer {
             for(let i=0; i<viewer.eventListenerStack.length; ++i) {
                 if (viewer.eventListenerStack[i].onMouseUp !== undefined &&
                     viewer.eventListenerStack[i].onMouseUp(event)) {
+                    return true;
+                }
+            }
+        }
+        /**
+         * 路由 mouse click 事件
+         * @param event
+         * @returns {boolean}
+         */
+        this.onClick = ( event )=> {
+            if(!this.active) {
+                return true;
+            }
+            //
+            event.preventDefault();
+            event.stopPropagation();
+            //
+            for(let i=0; i<viewer.eventListenerStack.length; ++i) {
+                if(viewer.eventListenerStack[i].onClick !== undefined &&
+                    viewer.eventListenerStack[i].onClick(event)) {
+                    return true;
+                }
+            }
+        }
+
+        /**
+         * 路由 mouse dblclick 事件
+         * @param event
+         * @returns {boolean}
+         */
+        this.onDoubleClick = ( event )=> {
+            if(!this.active) {
+                return true;
+            }
+            //
+            event.preventDefault();
+            event.stopPropagation();
+            //
+            for(let i=0; i<viewer.eventListenerStack.length; ++i) {
+                if(viewer.eventListenerStack[i].onDoubleClick !== undefined &&
+                    viewer.eventListenerStack[i].onDoubleClick(event)) {
                     return true;
                 }
             }
@@ -1052,6 +1198,8 @@ class Viewer {
 
         this.domElement.addEventListener( 'mousedown', this.onMouseDown, false );
         this.domElement.addEventListener( 'mouseup', this.onMouseUp, false );
+        this.domElement.addEventListener( 'click', this.onClick, false );
+        this.domElement.addEventListener( 'dblclick', this.onDoubleClick, false );
         this.domElement.addEventListener( 'mousemove', this.onMouseMove, false );
         this.domElement.addEventListener( 'wheel', this.onMouseWheel, false );
 
@@ -1074,6 +1222,9 @@ class Viewer {
 
         this.domElement.removeEventListener( 'mousedown', this.onMouseDown, false );
         this.domElement.removeEventListener( 'mouseup', this.onMouseUp, false );
+        this.domElement.removeEventListener( 'click', this.onClick, false );
+        this.domElement.removeEventListener( 'dblclick', this.onDoubleClick, false );
+
         this.domElement.removeEventListener( 'mousemove', this.onMouseMove, false );
         this.domElement.removeEventListener( 'wheel', this.onMouseWheel, false );
 

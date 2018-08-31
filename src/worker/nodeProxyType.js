@@ -25,6 +25,7 @@ function GeometryProxy() {
 
 function TextureProxy() {
     this.url = null;
+    this.blobContent = null;
     this.magFilter = "LINEAR";
     this.minFilter = "LINEAR_MIPMAP_LINEAR";
     this.wrapS = "REPEAT";
@@ -56,8 +57,6 @@ function ProxyProxy() {
     this.fileList = [];
     this.name = null;
 }
-
-
 
 function Vector3( x, y, z ) {
 

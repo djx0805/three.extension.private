@@ -120,8 +120,19 @@ class MarkLayer extends THREE.Group{
     }
     update(context)
     {
+        let lookAt = context.camera.matrixWorldInverse.getLookAt();
+        //
         for(let n=0, length = this.children.length; n<length; ++n) {
             if(this.children[n].isSprite) {
+                if(this.children[n].position.clone().distanceTo(lookAt.eye) > 1500) {
+                    this.children[n].visible = false;
+                    continue;
+                }
+                else {
+                    this.children[n].visible = true;
+                    this.children[n].frustumCulled = false;
+                }
+                //
                 let bs = new THREE.Sphere();
                 bs.center.copy(this.children[n].position);
                 let map = this.children[n].material.map;
@@ -142,7 +153,7 @@ class MarkLayer extends THREE.Group{
                 this.pickingScene.children[n].updateMatrixWorld(true);
             }
         }
-        super.update(context);
+        //super.update(context);
     }
     removeUnExpected()
     {

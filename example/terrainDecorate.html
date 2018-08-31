@@ -37,6 +37,7 @@ a { color:red }
     <script src="../build/three.loader.js"></script>
     <script src="../build/tjh.ar.js"></script>
     <script src="../build/tjh.ar.tools.js"></script>
+    <script src="../build/extension/lineDecorateLayer.js"></script>
     <script src="../node_modules/three/examples/js/Detector.js"></script>
     <script src="../node_modules/three/examples/js/libs/stats.min.js"></script>
     <script src="../node_modules/jquery/dist/jquery.min.js"></script>
@@ -71,9 +72,14 @@ function init() {
 
     //
     camera = viewer.camera;
+    camera.atuoCalculateNearFar = true;
 
     camera.position.set(-4403.47 + 3000,-4006.83 + 3000, 2000);
     camera.lookAt(new THREE.Vector3(-4403.47 + 3000,-4006.83 + 3000, 24.8352));
+    //camera.updateMatrixWorld(true);
+
+    //camera.fovy = 15.0;
+   // camera.updateProjectionMatrix();
 
     //controls.target = new THREE.Vector3(-618, 510, 31.14);
     //controls.update();
@@ -98,47 +104,19 @@ function init() {
 
     scene.addTerrainLayer(terrainLayer);
 
-    var ftLayerPoint = new tjh.ar.FeatureLayer("http://192.168.10.9:8080/geoserver/tjh/ows?service=WFS&version=1.0.0&typeName=tjh:ft_test_ludeng&maxFeatures=50", "./models/obj//walt/WaltHead.obj", true, scene.terrainLayers, scene.globalOffset);
-    var ftLayerLine = new tjh.ar.FeatureLayer("http://192.168.10.9:8080/geoserver/tjh/ows?service=WFS&version=1.0.0&typeName=tjh:ft_test_roadcenterline&maxFeatures=50","",false, scene.terrainLayers, scene.globalOffset);
-
-    // point
-    ftLayerPoint.regulator.color.set(0xffff00);
-    ftLayerPoint.regulator.fitPattern = tjh.ar.FeatureLayer.FIT_PATTERN.FIT_TERRIAN_LOW;
-
-    // 备注
-    // 有效性
-    ftLayerPoint.labelAvaliable = false;
-    // 字体大小
-    ftLayerPoint.labelControler.fontSize = 20;
-    // 字距
-    ftLayerPoint.labelControler.fontDivisions = 3;
-    // 透明度
-    ftLayerPoint.labelControler.opacity = 0.5;
-    // 颜色
-    ftLayerPoint.labelControler.color.set(0x55ff00);
-    ftLayerPoint.initMaterial();
+    var lineDecorateLayer = new LineDecorateLayer("http://192.168.10.9:8080/geoserver/tjh/ows?service=WFS&version=1.0.0&typeName=tjh:ft_test_roadcenterline&maxFeatures=50");
+    scene.addPostLayer("LineDecorateLayer", 10, lineDecorateLayer);
 
 
-    // line
-    ftLayerLine.regulator.color.set(0x00ffff);
-    ftLayerLine.regulator.fitPattern = tjh.ar.FeatureLayer.FIT_PATTERN.FIT_TERRIAN_LOW;
-    ftLayerLine.regulator.size = 3.0;
-    ftLayerLine.regulator.setHighValue(150.04) ;
-
-    // 备注
-    ftLayerLine.labelAvaliable = true;
-    ftLayerLine.labelControler.fontSize = 12;
-    ftLayerLine.labelControler.fontDivisions = 3;
-    ftLayerLine.labelControler.opacity = 1.0;
-    ftLayerLine.labelControler.color.set(0xff0000);
-
-    ftLayerLine.initMaterial();
-
-    scene.addFeatureLayer(ftLayerPoint);
-    scene.addFeatureLayer(ftLayerLine);
-
-
-    let defaultRenderTechnique = new tjh.ar.OutLineTechnique(renderer, scene, camera);
+    let defaultRenderTechnique = new tjh.ar.RenderTechnique(renderer, scene, camera);
+    let normalRenderPass = new tjh.ar.NormalRenderPass(scene, camera, defaultRenderTechnique.screenRT);
+    let outlineRenderPass = new tjh.ar.OutLineRenderPass(scene, camera, defaultRenderTechnique.offScreenRT);
+    let lineDecorateRenderPass = new LineDecorateRenderPass(scene, camera, defaultRenderTechnique.offScreenRT);
+    let outPutRenderPass = new tjh.ar.OutPutRenderPass(scene, camera, defaultRenderTechnique.offScreenRT);
+    defaultRenderTechnique.addRenderPass(normalRenderPass);
+    defaultRenderTechnique.addRenderPass(outlineRenderPass);
+    defaultRenderTechnique.addRenderPass(lineDecorateRenderPass);
+    defaultRenderTechnique.addRenderPass(outPutRenderPass);
     viewer.pushRenderTechnique(defaultRenderTechnique);
     //
     stats = new Stats();

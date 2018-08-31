@@ -89,9 +89,8 @@
 				scene = viewer.getScene();
 				scene.fog = new THREE.Fog( 0x000000, 1, 15000 );
 
-				var light = new THREE.DirectionalLight( 0xffffff );
-				light.position.set( 0, 0, 1 ).normalize();
-				scene.addLightSource( light );
+                var ambientLight = new THREE.AmbientLight( 0xffffff );
+                scene.addLightSource( ambientLight );
 
 				var terrainLayer = new tjh.ar.TerrainLayer();
 				terrainLayer.dataBasePager.maxWaitingLoaded = 1;

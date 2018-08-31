@@ -112,7 +112,10 @@ class ModelLayer extends THREE.Group {
            }
        }
     }
-
+    /**
+     * 移除物体
+     * @param {Object} obj -所要移除的物体
+     */
     remove(obj) {
         if(obj.mixer) {
             let index = this._mixers_.indexOf(obj.mixer);

@@ -38,7 +38,11 @@ class TerrainLayer extends THREE.ProxyNode {
                 }
             }
         })();
-        //
+
+        /**
+         * 获取Layer当前的包围盒
+         * @return {THREE.Box3} -包围盒
+         */
         this.getCurrentBoundingBoxWorld = function () {
             let bb = new THREE.Box3();
             for(let n=0, length = this._visibleMesh_.length; n<length; ++n) {
@@ -47,7 +51,11 @@ class TerrainLayer extends THREE.ProxyNode {
             //
             return bb;
         };
-        //
+
+        /**
+         * 获取Layer当前的包围球
+         * @return {THREE.Sphere} -包围球
+         */
         this.getCurrentBoundingSphereWorld = function () {
             let bs = new THREE.Sphere();
             for(let n=0, length = this._visibleMesh_.length; n<length; ++n) {
@@ -76,6 +84,7 @@ class TerrainLayer extends THREE.ProxyNode {
 
     update(context) {
         this._visibleMesh_ = [];
+        this.dataBasePager.loadRequest = [];
         //
         if(!this.visible)
             return;
@@ -84,14 +93,15 @@ class TerrainLayer extends THREE.ProxyNode {
             if(material instanceof  THREE.MeshBasicMaterial) {
                 material.map = undefined;
             }
-            //
-            return true;
+            return false;
         }
         //
         if(!context.lookAt) {
             context.lookAt = context.camera.matrixWorldInverse.getLookAt();
         }
         super.update(context, this._visibleMesh_);
+        //
+        this.loadRequest = this.dataBasePager.loadRequest;
     }
 
     intersectWithRay(raycaster) {

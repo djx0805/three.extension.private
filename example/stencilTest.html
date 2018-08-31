@@ -36,6 +36,7 @@
 		<script src="../node_modules/three/build/three.js"></script>
 		<script src="../build/three.extension.js"></script>
 		<script src="../build/tjh.ar.js"></script>
+		<script src="../build/tjh.ar.tools.js"></script>
 		<script src="../node_modules/three/examples/js/Detector.js"></script>
 		<script src="../node_modules/three/examples/js/libs/stats.min.js"></script>
 		<script src="../node_modules/jquery/dist/jquery.min.js"></script>
@@ -74,6 +75,7 @@
                 viewer.setRenderer(renderer);
                 //
 				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 1500000 );
+                //camera = new THREE.OrthographicCamera(-window.innerWidth/2, window.innerWidth/2, window.innerHeight/2, -window.innerHeight/2, 1, 1500000);
 				viewer.setCamera(camera);
                 //
 				//controls = new THREE.TrackballControls( this.camera, this.renderer.domElement );
@@ -81,26 +83,28 @@
                 //camera.position.set(-618,510,2000);
                 //camera.lookAt(new THREE.Vector3(-618, 510, 31.14));
 
-                camera.position.set(-618 + 516006,510 + 3348054,2000);
-                camera.lookAt(new THREE.Vector3(-618 + 516006, 510 + 3348054, 31.14));
+                camera.position.set(-1274.28,-425.81,2000);
+                camera.lookAt(new THREE.Vector3(-1274.28,-425.81, 52));
 
-                //controls.target = new THREE.Vector3(-618, 510, 31.14);
-                //controls.update();
-				controls = new tjh.ar.BasicTerrainControls(viewer);
-				viewer.pushEventListenerFront(controls);
-
-				scene = new tjh.ar.ARScene();
+                scene = new tjh.ar.ARScene();
 				scene.fog = new THREE.Fog( 0x000000, 1, 15000 );
 				scene.autoUpdate = false;
 				viewer.setScene(scene);
 
+                controls = new tjh.ar.BasicTerrainControls(viewer);
+                viewer.pushEventListenerFront(controls);
+
+                var ambientLight = new THREE.AmbientLight( 0xffffff );
+                scene.addLightSource( ambientLight );
 
 				var light = new THREE.DirectionalLight( 0xffffff );
 				light.position.set( 0, 0, 1 ).normalize();
-				scene.addLightSource( light );
+				//scene.addLightSource( light );
 
 				var terrainLayer = new tjh.ar.TerrainLayer();
-				terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=c32ddf6c-2476-4ac9-b24f-9e01c263329e");
+				terrainLayer.dataBasePager.maxWaitingLoaded = 1;
+				terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=b47d9478-56f6-4d20-9dbb-93d05b624744");
+
 
                 //terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=44d36b01-25d6-45b9-81b9-1bf755877248");
                 //terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=e3412e05-37e3-4256-b3aa-4ee9e0c3ae48");
@@ -113,9 +117,46 @@
                 scene.add( pagedLod0 );*/
 				scene.addTerrainLayer(terrainLayer);
 				//
+				var tjhModelLayer = new tjh.ar.TJHModelLayer("192.168.10.232", 1080, "b47d9478-56f6-4d20-9dbb-93d05b624111");
+				scene.addModelLayer(tjhModelLayer);
+				//
+                let stencilVolumGeom = new THREE.BoxBufferGeometry( 200, 200, 300 );
+                var stencilVolumMaterial = new THREE.MeshBasicMaterial();
+                let stencilVolum = new THREE.Mesh( stencilVolumGeom, stencilVolumMaterial );
+                stencilVolum.position.set(-1274.28,-425.81, 52);
+                //scene.addTemporaryObj(stencilVolum);
+                scene.stencilVolums[scene.stencilVolums.length] = stencilVolum;
+
+                let bound = [new THREE.Vector3(0,0,52), new THREE.Vector3(200,0,52), new THREE.Vector3(200,200,52), new THREE.Vector3(0,200,52), new THREE.Vector3(0,0,52)];
+                terrainLayer.addExcavation(bound, new THREE.Vector3(-1274.28 - 100,-425.81 - 100, 0), 50);
+				//
                 let defaultRenderTechnique = new tjh.ar.OutLineTechnique(renderer, scene, camera);
                 viewer.pushRenderTechnique(defaultRenderTechnique);
                 //
+                var selectTool = null;
+                //
+                class SelectEvent extends tjh.ar.WindowEventListener {
+                    constructor(viewer) {
+                        super(viewer);
+                        //
+                        this.onKeyDown = (keyboardEvent)=> {
+                            if((keyboardEvent.keyCode === 115 || keyboardEvent.keyCode === 83)) {
+                                if (!selectTool) {
+                                    selectTool = new tjh.ar.tools.PointSelectTool(viewer, camera, true, viewer.scene.modelLayers);
+                                    viewer.pushEventListenerFront(selectTool);
+                                    return true;
+                                }
+                                else {
+                                    viewer.removeEventListenerFront();
+                                    selectTool = null;
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+                viewer.pushEventListenerFront(new SelectEvent(viewer));
+				//
                 stats = new Stats();
                 container.appendChild( stats.dom );
 			}

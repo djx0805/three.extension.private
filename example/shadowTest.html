@@ -33,7 +33,7 @@
 	<body>
 	    <div id="container"></div>
 
-		<script src="../node_modules/three/build/three.js"></script>
+		<script src="../build/three.js"></script>
 		<script src="../build/three.extension.js"></script>
 		<script src="../build/tjh.ar.js"></script>
 		<script src="../build/tjh.ar.tools.js"></script>
@@ -42,13 +42,14 @@
 		<script src="../node_modules/three/examples/js/libs/stats.min.js"></script>
 		<script src="../node_modules/jquery/dist/jquery.min.js"></script>
 		<script>
-			let ss = getSunLight(114, 0, 22.5, 2018, 12, 27, 16, 42);
+			let hour = 6;
+			let ss = getSunLight(114, 0, 22.5, 2018, 8, 27, hour, 42);
 			//
 			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 			var container, stats;
 
-			var camera, scene, renderer;
+			var camera, scene, renderer, light;
 
 			var geometry, objects;
 
@@ -87,8 +88,8 @@
                 //camera.position.set(-618,510,2000);
                 //camera.lookAt(new THREE.Vector3(-618, 510, 31.14));
 
-                //camera.position.set(-1274.28,-425.81,2000);
-                //camera.lookAt(new THREE.Vector3(-1274.28,-425.81, 52));
+                camera.position.set(-1274.28,-425.81,2000);
+                camera.lookAt(new THREE.Vector3(-1274.28,-425.81, 52));
 
                 camera.position.set(530771-1274.28,2508554-425.81,2000);
                 camera.lookAt(new THREE.Vector3(530771-1274.28,2508554-425.81, 52));
@@ -107,7 +108,7 @@
 
                 var theta = Math.PI * ( ss.h0*3.1415926/180 - 0.5 );
                 var phi = 2 * Math.PI * ( ss.a*3.1415926/180 - 0.5 );
-				var light = new THREE.DirectionalLight( new THREE.Color(0.6,0.6,0.6) );
+				light = new THREE.DirectionalLight( new THREE.Color(0.6,0.6,0.6) );
                 light.position.x = Math.cos(ss.ha*3.1415926/180)*Math.cos( ss.aa*3.1415926/180 );
                 light.position.y = Math.cos(ss.ha*3.1415926/180)*Math.sin( ss.aa*3.1415926/180 );
                 light.position.z = Math.sin(ss.ha*3.1415926/180);
@@ -115,10 +116,12 @@
                 light.shadow.mapSize.width = 2048;  // default
                 light.shadow.mapSize.height = 2048; // default
 				light.shadowDarkness = 1.0;
+				//
 				scene.addLightSource( light );
 
 				var terrainLayer = new tjh.ar.TerrainLayer();
 				terrainLayer.dataBasePager.maxWaitingLoaded = 1;
+				//terrainLayer.dataBasePager.maxSortRequests = 20;
 				//terrainLayer.addTerrain("http://192.168.10.232:1080/api/data/osgjsData?urlInfo=b47d9478-56f6-4d20-9dbb-93d05b624744");
                 terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=753a7f62-d48e-44c9-97f8-8cd698f5cdfc");
                 terrainLayer.addTerrain("http://192.168.10.9:8006/api/data/osgjsData?urlInfo=e50e8236-f899-401f-8c3b-fd66695c7d95");
@@ -139,7 +142,7 @@
                 scene.add( pagedLod0 );*/
 				scene.addTerrainLayer(terrainLayer);
 				//
-				var tjhModelLayer = new tjh.ar.TJHModelLayer("192.168.10.232", 1080, "b47d9478-56f6-4d20-9dbb-93d05b624111");
+				//var tjhModelLayer = new tjh.ar.TJHModelLayer("192.168.10.232", 1080, "b47d9478-56f6-4d20-9dbb-93d05b624111");
 				//scene.addModelLayer(tjhModelLayer);
 
 				var dataPager = new THREE.DataBasePager();
@@ -149,12 +152,8 @@
                 scene.addModelLayer(tjhModelLayer1);
                 var tjhModelLayer2 = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "3c3f46a5-e2d7-4621-8115-0475f01b835d", dataPager);
                 scene.addModelLayer(tjhModelLayer2);
-                var tjhModelLayer3 = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "b289ce50-d2b7-4b14-b993-ce339e3c3447", dataPager);
-                //scene.addModelLayer(tjhModelLayer3);
                 var tjhModelLayer4 = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "1caba847-72da-4374-9ad1-4115c3ab37fc", dataPager);
                 scene.addModelLayer(tjhModelLayer4);
-                var tjhModelLayer5 = new tjh.ar.TJHModelLayer("192.168.10.9", 8006, "becbec81-5e20-4bf1-b7f1-d67b1a2a1ed7", dataPager);
-                scene.addModelLayer(tjhModelLayer5);
 				//
                 //let defaultRenderTechnique = new tjh.ar.RenderTechnique(renderer);
                 //let defaultRenderPass = new tjh.ar.NormalRenderPass(scene, camera);
@@ -183,6 +182,14 @@
                                     return true;
                                 }
                             }
+                            else if(keyboardEvent.key === 'k') {
+                                hour = (hour + 0.01)%24;
+                                ss = getSunLight(114, 0, 22.5, 2018, 12, 27, hour, 42);
+                                light.position.x = Math.cos(ss.ha*3.1415926/180)*Math.cos( ss.aa*3.1415926/180 );
+                                light.position.y = Math.cos(ss.ha*3.1415926/180)*Math.sin( ss.aa*3.1415926/180 );
+                                light.position.z = Math.sin(ss.ha*3.1415926/180);
+                                light.updateMatrixWorld(true);
+							}
                         }
                     }
                 }

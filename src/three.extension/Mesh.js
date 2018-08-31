@@ -7,14 +7,24 @@
 /**
  * 释放函数
  */
-THREE.Mesh.prototype.dispose =  function(gpuRelease = true, memRelease = true) {
+THREE.Mesh.prototype.dispose =  function(canDispose = true, gpuRelease = true, memRelease = true) {
+    if(!canDispose) {
+        for(let n=0, length = this.children.length; n<length; ++n) {
+            this.children[n].dispose(canDispose, gpuRelease, memRelease);
+        }
+        return;
+    }
+    //
     if(this.geometry) {
         this.geometry.dispose();
         if(memRelease)
           this.geometry = null;
     }
     //
-    if(this.material.isMaterial) {
+    if(!this.material) {
+        console.log('');
+    }
+    else if(this.material.isMaterial) {
         if(this.material && this.material.map instanceof  THREE.Texture){
             this.material.map.nReference--;
             if(this.material.map.nReference <= 0){
@@ -52,12 +62,21 @@ THREE.Mesh.prototype.dispose =  function(gpuRelease = true, memRelease = true) {
     }
     //
     for(let n=0, length = this.children.length; n<length; ++n) {
-        this.children[n].dispose(gpuRelease, memRelease);
+        this.children[n].dispose(canDispose, gpuRelease, memRelease);
     }
+    //
+    this.children = [];
 };
 
 
-THREE.Points.prototype.dispose = function(gpuRelease = true, memRelease = true) {
+THREE.Points.prototype.dispose = function(canDispose = true, gpuRelease = true, memRelease = true) {
+    if(!canDispose) {
+        for(let n=0, length = this.children.length; n<length; ++n) {
+            this.children[n].dispose(canDispose, gpuRelease, memRelease);
+        }
+        return;
+    }
+    //
     if(this.geometry) {
         this.geometry.dispose();
         if(memRelease)
@@ -80,11 +99,20 @@ THREE.Points.prototype.dispose = function(gpuRelease = true, memRelease = true) 
     }
     //
     for(let n=0, length = this.children.length; n<length; ++n) {
-        this.children[n].dispose(gpuRelease, memRelease);
+        this.children[n].dispose(canDispose, gpuRelease, memRelease);
     }
+    //
+    this.children = [];
 }
 
-THREE.Line.prototype.dispose = function (gpuRelease = true, memRelease = true) {
+THREE.Line.prototype.dispose = function (canDispose = true, gpuRelease = true, memRelease = true) {
+    if(!canDispose) {
+        for(let n=0, length = this.children.length; n<length; ++n) {
+            this.children[n].dispose(canDispose, gpuRelease, memRelease);
+        }
+        return ;
+    }
+    //
     if(this.geometry) {
         this.geometry.dispose();
         if(memRelease)
@@ -107,6 +135,8 @@ THREE.Line.prototype.dispose = function (gpuRelease = true, memRelease = true) {
     }
     //
     for(let n=0, length = this.children.length; n<length; ++n) {
-        this.children[n].dispose(gpuRelease, memRelease);
+        this.children[n].dispose(canDispose, gpuRelease, memRelease);
     }
+    //
+    this.children = [];
 }
